@@ -60,3 +60,49 @@ f_getSeq = function(pile){
   return(seq)
 }
 
+
+
+getSequenceParameters = function(ivSeq, cRefBase, prior=c(A=1/2, T=1/2, G=1/2, C=1/2), iSize=1000){
+  if(!require(LearnBayes)) stop('R Package LearnBayes required')
+  ## internal functions
+  # get alpha values for dirichlet posterior
+  getAlpha = function(seq, prior=c(A=1/2, T=1/2, G=1/2, C=1/2)){
+    #a = letterFrequency(seq, letters='ATGC', OR=0, as.prob=F)
+    alpha = seq + prior #a + prior
+    return(alpha)
+  }
+  # calculate dirichlet variance 
+  getDirichletVariance = function(alpha){
+    al0 = sum(alpha)
+    denom = al0^2 * (al0+1)
+    ret = sapply(alpha, function(x){
+      return(x * (al0 - x) / denom)
+    })
+    return(ret)
+  }
+  # get posterior theta from posterior dirichlet
+  getPosterior = function(alpha, n=1000){
+    p = rdirichlet(n, alpha)
+    colnames(p) = names(alpha)
+    #m = colMeans(p)
+    return(p)
+  }
+  # posterior preditive distribution based on the theta from dirichlet posterior
+  getPosteriorPredict = function(theta, n=1){
+    return(t(rmultinom(1000, n, theta)))
+  }
+  ###### processing steps
+  ## get posterior values
+  a = getAlpha(ivSeq, prior)
+  # get posterior dirichlet variance
+  var = getDirichletVariance(a)
+  # get posterior via simulation
+  p = getPosterior(a, iSize)
+  #   r = getPosteriorPredict(colMeans(p), 1000)
+  #   # get variance by adding variance of each binomial component of the posterior predictive data
+  #   (sum(apply(r, 2, var)))
+  var = sum(var)
+  theta = colMeans(p)[cRefBase]
+  return(c(theta=theta, var=var))
+}
+

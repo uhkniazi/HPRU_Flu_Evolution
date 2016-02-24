@@ -1,7 +1,246 @@
+logit = function(p) log(p/(1-p))
+logit.inv = function(p) exp(p)/(exp(p)+1) 
+
+mFile = matrix(NA, nrow=width(refseq), ncol=2, dimnames=list(1:width(refseq), c('theta', 'var')))
+
+m = match(rownames(file17), rownames(mFile))
+
+mFile[m,] = file17
+mFile17 = mFile
+
+mFile = matrix(NA, nrow=width(refseq), ncol=2, dimnames=list(1:width(refseq), c('theta', 'var')))
+m = match(rownames(file15), rownames(mFile))
+mFile[m,] = file15
+mFile15 = mFile
+
+mTheta = cbind(theta15=mFile15[,'theta'], theta17=mFile17[,'theta'])
+
+m15 = na.omit(mFile15)
+
+quantile(m15[,'var'], 0:10/10)
+var.groups = cut(m15[,'var'], breaks = quantile(m15[,'var'], 0:10/10), labels = 0:9)
+
+stripchart(logit(m15[,'theta']) ~ var.groups, method='jitter', pch=20)
+table(var.groups)
+
+x = as.numeric(rownames(m15[var.groups != '9',]))
+plot(x, logit(m15[var.groups != '9', 'theta']), pch=20, cex=0.5)
+plot(rownames(m15), logit(m15[, 'theta']), pch=20, cex=0.5)
+
+m17 = na.omit(mFile17)
+
+quantile(m17[,'var'], 0:10/10)
+var.groups = cut(m17[,'var'], breaks = quantile(m17[,'var'], 0:10/10), labels = 0:9)
+
+stripchart((m17[,'theta']) ~ var.groups, method='jitter', pch=20)
+table(var.groups)
+
+x = as.numeric(rownames(m17[var.groups != '9',]))
+plot(x, logit(m17[var.groups != '9', 'theta']), pch=20, cex=0.5)
+plot(rownames(m17), logit(m17[, 'theta']), pch=20, cex=0.5)
+
+x = as.numeric(rownames(m15[var.groups != '9' & m15[,'theta'] < 0.2,]))
+
+seqcheck = refseq[[1]][x[10]:x[length(x)]]
+writeXStringSet(DNAStringSet(seqcheck), 'Results/seq.fasta')
+
+
+file13 = na.omit(t(file13))
+head(file13)
+
+file11 = f_getMutations(file.choose(), refseq)
+file11 = na.omit(t(file11))
+head(file11)
+
+file12 = f_getMutations(file.choose(), refseq)
+file12 = na.omit(t(file12))
+head(file12)
+
+file15 = f_getMutations(file.choose(), refseq)
+file15 = na.omit(t(file15))
+head(file15)
+
+file17 = f_getMutations(file.choose(), refseq)
+file17 = na.omit(t(file17))
+head(file17)
+
+file19 = f_getMutations(file.choose(), refseq)
+file19 = na.omit(t(file19))
+head(file19)
+
+file16 = f_getMutations(file.choose(), refseq)
+file16 = na.omit(t(file16))
+head(file16)
+
+
+par(mfrow=c(2,1))
+plot(log(file13[,1]), pch=20, cex=0.5, main='file13', ylab='theta' )
+plot(log(file13[,2]), pch=20, cex=0.5, main='file13', ylab='log var' )
+
+par(mfrow=c(2,1))
+plot(log(file11[,1]), pch=20, cex=0.5, main='file11', ylab='theta' )
+plot(log(file11[,2]), pch=20, cex=0.5, main='file11', ylab='log var' )
+
+par(mfrow=c(1,1))
+plot(1:nrow(file13), log(file13[,1]), pch=20, cex=0.5)
+points(1:nrow(file13), log(file11[,1]), pch=20, cex=0.5, col='red')
+points(1:nrow(file12), log(file12[,1]), pch=20, cex=0.5, col='blue')
+points(1:nrow(file15), log(file15[,1]), pch=20, cex=0.5, col='green')
+
+plot(1:nrow(file19), log(file19[,1]), pch=20, cex=0.5)
+points(1:nrow(file17), log(file17[,1]), pch=20, cex=0.5, col='blue')
+
+plot(1:nrow(file15), log(file15[,1]), pch=20, cex=0.5, col='grey')
+points(1:nrow(file17), log(file17[,1]), pch=20, cex=0.5, col='blue')
+
+plot(1:nrow(file15), (file15[,1]), pch=20, cex=0.5, col='grey')
+points(1:nrow(file17), (file17[,1]), pch=20, cex=0.5, col='blue')
+
+var15 = file15[,'var']
+var17 = file17[,'var']
+
+theta15 = file15[,'theta']
+theta17 = file17[,'theta']
+
+plot(1:nrow(file15), (var15), pch=20, cex=0.5, col='grey')
+points(1:nrow(file17), (var17), pch=20, cex=0.5, col='blue')
+
+plot(density(log(var15)))
+plot(density(theta15))
+plot(density(theta17))
+
+coplot(log(theta15[names(theta15)]) ~ log(theta17[names(theta15)]) | log(var15[names(theta15)]) * log(var17[names(theta15)]))
+m = cbind(mFile15, mFile17)
+head(m)
+m = na.omit(m)
+par(mfrow=c(1,1))
+colnames(m) = paste(colnames(m), c(15, 15, 17, 17), sep='')
+head(m)
+coplot(logit(m[,'theta15']) ~ logit(m[,'theta17']) | log(m[,'var15']) * log(m[,'var17']))
+
+
+x = as.numeric(rownames(m15[var.groups != '9' & m15[,'theta'] < 0.2,]))
+seqcheck = refseq[[1]][x[10]:x[length(x)]]
+writeXStringSet(DNAStringSet(seqcheck), 'Results/seq.fasta')
+
+
+
+getSequenceParameters = function(ivSeq, cRefBase, prior=c(A=1/2, T=1/2, G=1/2, C=1/2), iSize=1000){
+  if(!require(LearnBayes)) stop('R Package LearnBayes required')
+  ## internal functions
+  # get alpha values for dirichlet posterior
+  getAlpha = function(seq, prior=c(A=1/2, T=1/2, G=1/2, C=1/2)){
+    #a = letterFrequency(seq, letters='ATGC', OR=0, as.prob=F)
+    alpha = seq + prior #a + prior
+    return(alpha)
+  }
+  # calculate dirichlet variance 
+  getDirichletVariance = function(alpha){
+    al0 = sum(alpha)
+    denom = al0^2 * (al0+1)
+    ret = sapply(alpha, function(x){
+      return(x * (al0 - x) / denom)
+    })
+    return(ret)
+  }
+  # get posterior theta from posterior dirichlet
+  getPosterior = function(alpha, n=1000){
+    p = rdirichlet(n, alpha)
+    colnames(p) = names(alpha)
+    #m = colMeans(p)
+    return(p)
+  }
+  # posterior preditive distribution based on the theta from dirichlet posterior
+  getPosteriorPredict = function(theta, n=1){
+    return(t(rmultinom(1000, n, theta)))
+  }
+  ###### processing steps
+  ## get posterior values
+  a = getAlpha(ivSeq, prior)
+  # get posterior dirichlet variance
+  var = getDirichletVariance(a)
+  # get posterior via simulation
+  p = getPosterior(a, iSize)
+#   r = getPosteriorPredict(colMeans(p), 1000)
+#   # get variance by adding variance of each binomial component of the posterior predictive data
+#   (sum(apply(r, 2, var)))
+  var = sum(var)
+  theta = colMeans(p)[cRefBase]
+  return(list(theta=theta, var=var))
+}
+
+
+
+seq.1 = DNAString('AAAAAAAATTTTTTTCCCCCCCCGGGGGGGGG')
+seq.1 = DNAString('AAAAAAAATTTTTTTTTTTTTTTTTTGC')
+seq.1 = DNAString('AAAAAAAAAAATTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTGC')
+seq.1 = DNAString('AAAATGCCCCCCCCCCCCCCCCCCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
+
+seq = letterFrequency(seq.1, letters='ATGC', OR=0, as.prob=F)
+getSequenceParameters(seq, 'A')
+
 # temp.R
 
 library(LearnBayes)
 library(Biostrings)
+
+##############################################################
+seq.1 = DNAString('AAAAAAAATTTTTTTCCCCCCCCGGGGGGGGG')
+seq.1 = DNAString('AAAAAAAATTTTTTTTTTTTTTTTTTGC')
+seq.1 = DNAString('AAAAAAAAAAATTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTGC')
+seq.1 = DNAString('AAAATGCCCCCCCCCCCCCCCCCCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
+getAlpha = function(seq, prior=c(A=1/2, T=1/2, G=1/2, C=1/2)){
+  #a = letterFrequency(seq, letters='ATGC', OR=0, as.prob=F)
+  alpha = seq + prior #a + prior
+  return(alpha)
+}
+
+getDirichletVariance = function(alpha){
+  al0 = sum(alpha)
+  denom = al0^2 * (al0+1)
+  ret = sapply(alpha, function(x){
+    return(x * (al0 - x) / denom)
+  })
+  return(ret)
+}
+
+seq = letterFrequency(seq.1, letters='ATGC', OR=0, as.prob=F)
+getAlpha(seq)
+sum(getDirichletVariance(getAlpha(seq)))
+10 * log10(sum(getDirichletVariance(getAlpha(seq))))
+
+10 * log10(sum(apply(getPosterior(getAlpha(seq), 1000), 2, var)))
+
+a = getAlpha(seq)
+p = getPosterior(a)
+r = getPosteriorPredict(colMeans(p), 1000)
+# get variance by adding variance of each binomial component of the posterior predictive data
+(sum(apply(r, 2, var)))
+
+# get posterior predictive values using multinomial random sample
+getPosteriorPredict = function(theta, n=1){
+  return(t(rmultinom(1000, n, theta)))
+}
+
+# get posterior theta from posterior dirichlet
+getPosterior = function(alpha, n=1000){
+  if(!require(LearnBayes)) stop('Package LearnBayes required')
+  p = rdirichlet(n, alpha)
+  colnames(p) = names(alpha)
+  #m = colMeans(p)
+  return(p)
+}
+
+getPosteriorPredict = function(theta, n=1){
+  return(t(rmultinom(1000, n, theta)))
+}
+
+post = getPosterior(getAlpha(seq))
+colMeans(post)
+
+getBase.prob(getAlpha(seq), 'A')
+
+##############################################################
 seq.1 = DNAString('AAAAAAAAAATGCC')
 #letterFrequency(seq, 'ATCG', as.prob=T)
 source('~/Dropbox/Home/Data/R/My_Libraries/NGS_functions.R')
@@ -18,7 +257,7 @@ getAlpha = function(seq, base){
 getBase.prob = function(alpha, base){
   p = rdirichlet(1000, alpha) 
   i = which(names(alpha) == base)
-  return(mean(p[,i] > p[,-i]))
+  return(mean(all(p[,i] > p[,-i])))
 }
 
 getColumn.var = function(theta){
@@ -92,6 +331,14 @@ prob.Obama=function(j)
 }
 
 Obama.win.probs=sapply(1:51,prob.Obama)
+
+sim.election=function()
+{
+  winner=rbinom(51,1,Obama.win.probs)
+  sum(EV*winner)
+}
+sim.EV=replicate(1000,sim.election())
+
 j = 4
 v = rep(NA, length.out=length(Obama.win.probs))
 v = sapply(1:51, function(j) var(rbinom(1000, 1, Obama.win.probs[j])))
