@@ -127,13 +127,13 @@ getSequenceParameters = function(ivSeq, cRefBase, prior=c(A=1/2, T=1/2, G=1/2, C
 
 
 
-# seq.1 = DNAString('AAAAAAAATTTTTTTCCCCCCCCGGGGGGGGG')
-# seq.1 = DNAString('AAAAAAAATTTTTTTTTTTTTTTTTTGC')
-# seq.1 = DNAString('AAAAAAAAAAATTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTGC')
-# seq.1 = DNAString('AAAATGCCCCCCCCCCCCCCCCCCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
-# 
-# seq = letterFrequency(seq.1, letters='ATGC', OR=0, as.prob=F)
-# getSequenceParameters(seq, 'A')
+seq.1 = DNAString('AAAAAAAATTTTTTTCCCCCCCCGGGGGGGGG')
+seq.1 = DNAString('AAAAAAAATTTTTTTTTTTTTTTTTTGC')
+seq.1 = DNAString('AAAAAAAAAAATTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTGC')
+seq.1 = DNAString('AAAATGCCCCCCCCCCCCCCCCCCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
+
+seq = letterFrequency(seq.1, letters='ATGC', OR=0, as.prob=F)
+getSequenceParameters(seq, 'A')
 
 # temp.R
 
@@ -173,10 +173,10 @@ r = getPosteriorPredict(colMeans(p), 1000)
 # get variance by adding variance of each binomial component of the posterior predictive data
 (sum(apply(r, 2, var)))
 
-# get posterior predictive values using multinomial random sample
-getPosteriorPredict = function(theta, n=1){
-  return(t(rmultinom(1000, n, theta)))
-}
+# # get posterior predictive values using multinomial random sample
+# getPosteriorPredict = function(theta, n=1){
+#   return(t(rmultinom(1000, n, theta)))
+# }
 
 # get posterior theta from posterior dirichlet
 getPosterior = function(alpha, n=1000){
@@ -188,8 +188,25 @@ getPosterior = function(alpha, n=1000){
 }
 
 getPosteriorPredict = function(theta, n=1){
-  return(t(rmultinom(1000, n, theta)))
+  ret = t(apply(theta, 1, function(x) rmultinom(1, n, x)))
+  colnames(ret) = colnames(theta)
+  return(ret)
 }
+
+getPosteriorGamma = function(alpha, base, n=1000, rate=100){
+  alpha.scale = (alpha/sum(alpha)) * rate
+  i = which(names(alpha.scale) == base)
+  alpha.new = c(alpha.scale[i], sum(alpha.scale[-i]))
+  names(alpha.new) = c(base, 'Other')
+  rg = sapply(seq_along(alpha.new), function(x) {
+    return(rgamma(n, alpha.new[x], 1))
+  })
+  colnames(rg) = names(alpha.new)
+  return(rg)
+}
+
+
+
 
 post = getPosterior(getAlpha(seq))
 colMeans(post)
@@ -211,6 +228,12 @@ getAlpha = function(seq, base){
 }
 
 getBase.prob = function(alpha, base){
+  p = rdirichlet(1000, alpha) 
+  i = which(names(alpha) == base)
+  return(mean(all(p[,i] > p[,-i])))
+}
+
+getBase.rate = function(alpha, base, scale=100){
   p = rdirichlet(1000, alpha) 
   i = which(names(alpha) == base)
   return(mean(all(p[,i] > p[,-i])))

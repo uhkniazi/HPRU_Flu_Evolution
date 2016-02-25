@@ -62,7 +62,8 @@ f_getSeq = function(pile){
 
 
 
-getSequenceParameters = function(ivSeq, cRefBase, prior=c(A=1/2, T=1/2, G=1/2, C=1/2), iSize=1000){
+getSequenceParameters = function(ivSeq, cRefBase, prior=c(A=1/2, T=1/2, G=1/2, C=1/2), iSize=1000, 
+                                 iNormalizingRate=100){
   if(!require(LearnBayes)) stop('R Package LearnBayes required')
   ## internal functions
   # get alpha values for dirichlet posterior
@@ -88,8 +89,26 @@ getSequenceParameters = function(ivSeq, cRefBase, prior=c(A=1/2, T=1/2, G=1/2, C
     return(p)
   }
   # posterior preditive distribution based on the theta from dirichlet posterior
+  # set n to adjust size of sum alpha
   getPosteriorPredict = function(theta, n=1){
-    return(t(rmultinom(1000, n, theta)))
+    ret = t(apply(theta, 1, function(x) rmultinom(1, n, x)))
+    colnames(ret) = colnames(theta)
+    return(ret)
+  }
+  # posterior gamma, a component of the dirichlet distribution
+  ## see gelman P 583 and bayesian computations with R page 66
+  ## this function standardizes/normalizes the gamma rate to 100
+  ## which is useful when comparing multiple samples sequenced at different depths
+  getPosteriorGamma = function(alpha, base, n=1000, rate=100){
+    alpha.scale = (alpha/sum(alpha)) * rate
+    i = which(names(alpha.scale) == base)
+    alpha.new = c(alpha.scale[i], sum(alpha.scale[-i]))
+    names(alpha.new) = c('Base', 'Other')
+    rg = sapply(seq_along(alpha.new), function(x) {
+      return(rgamma(n, alpha.new[x], 1))
+    })
+    colnames(rg) = names(alpha.new)
+    return(rg)
   }
   ###### processing steps
   ## get posterior values
@@ -103,10 +122,13 @@ getSequenceParameters = function(ivSeq, cRefBase, prior=c(A=1/2, T=1/2, G=1/2, C
   #   (sum(apply(r, 2, var)))
   var = sum(var)
   theta = colMeans(p)[cRefBase]
-  return(c(theta=theta, var=var))
+  if (is.na(theta)) {rate=c('Base'= NA, 'Other'=NA) } else {
+    rate = round(colMeans(getPosteriorGamma(a, cRefBase, iSize, iNormalizingRate)), 0)}
+  return(c(theta=theta, var=var, rate.base=rate['Base'], rate.other=rate['Other']))
 }
 
 
 logit = function(p) log(p/(1-p))
-logit.inv = function(p) exp(p)/(exp(p)+1) 
+logit.inv = function(p) {exp(p)/(exp(p)+1) }
+
 

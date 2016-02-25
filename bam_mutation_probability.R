@@ -33,11 +33,23 @@ f_getMutations = function(csBamfile, oDSRef){
     getSequenceParameters(seq[x,], as.character(oDSRef[[1]][as.numeric(x)]))
   })
   colnames(param) = rownames(seq)
-  rownames(param) = c('theta', 'var')
+  rownames(param) = c('theta', 'var', 'rate.base', 'rate.other')
+  param = t(param)
+  # create factors for quantiles
+  param = na.omit(param)
+  var.q = cut(param[,'var'],breaks = quantile(param[,'var'], c(0, 0.05, 0.95, 1)), include.lowest = T, 
+                  labels = c('q5.low', 'q90', 'q5.high'))
+  theta.q = cut(param[,'theta'],breaks = quantile(param[,'theta'], c(0, 0.05, 0.95, 1)), include.lowest = T, 
+                    labels = c('q5.low', 'q90', 'q5.high'))
+#   rate.base.q = cut(param[,'rate.base'],breaks = quantile(param[,'rate.base'], c(0, 0.05, 0.95, 1)), include.lowest = T, 
+#                 labels = c('q5.low', 'q90', 'q5.high'))
+#   rate.other.q = cut(param[,'rate.other'],breaks = quantile(param[,'rate.other'], c(0, 0.05, 0.95, 1)), include.lowest = T, 
+#                 labels = c('q5.low', 'q90', 'q5.high'))
+#   
+  param = cbind(param, var.q, theta.q)
   #return(t(param))
   ## reformat the data matrix 
-  mFile = matrix(NA, nrow=width(oDSRef), ncol=2, dimnames=list(1:width(oDSRef), c('theta', 'var')))
-  param = t(param)
+  mFile = matrix(NA, nrow=width(oDSRef), ncol=ncol(param), dimnames=list(1:width(oDSRef), colnames(param)))
   m = match(rownames(param), rownames(mFile))
   mFile[m,] = param
   return(mFile)
