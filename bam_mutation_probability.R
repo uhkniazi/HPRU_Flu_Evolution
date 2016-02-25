@@ -26,15 +26,22 @@ f_getMutations = function(csBamfile, oDSRef){
   # get the sequence
   seq = f_getSeq(oPile)
   # adjust the reference sequence size to the aligned pileup data
-  s = as.numeric(rownames(seq)[1])
-  oDSRef.sub = DNAStringSet(oDSRef[[1]], s, width = nrow(seq))
+  #s = as.numeric(rownames(seq)[1])
+  #oDSRef.sub = DNAStringSet(oDSRef[[1]], s)
   # get sequence parameters
-  param = sapply(seq_along(1:nrow(seq)), function(x){
-    getSequenceParameters(seq[x,], as.character(oDSRef.sub[[1]][x]))
+  param = sapply(rownames(seq), function(x){
+    getSequenceParameters(seq[x,], as.character(oDSRef[[1]][as.numeric(x)]))
   })
   colnames(param) = rownames(seq)
   rownames(param) = c('theta', 'var')
-  return(param)
+  #return(t(param))
+  ## reformat the data matrix 
+  mFile = matrix(NA, nrow=width(oDSRef), ncol=2, dimnames=list(1:width(oDSRef), c('theta', 'var')))
+  param = t(param)
+  m = match(rownames(param), rownames(mFile))
+  mFile[m,] = param
+  return(mFile)
 }
+
 
 

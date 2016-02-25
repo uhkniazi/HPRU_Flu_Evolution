@@ -1,24 +1,49 @@
-logit = function(p) log(p/(1-p))
-logit.inv = function(p) exp(p)/(exp(p)+1) 
+# logit = function(p) log(p/(1-p))
+# logit.inv = function(p) exp(p)/(exp(p)+1) 
+# 
+# mFile = matrix(NA, nrow=width(refseq), ncol=2, dimnames=list(1:width(refseq), c('theta', 'var')))
+# 
+# m = match(rownames(file17), rownames(mFile))
+# 
+# mFile[m,] = file17
+# mFile17 = mFile
+# 
+# file15 = t(file15)
+# head(file15)
+# mFile = matrix(NA, nrow=width(refseq), ncol=2, dimnames=list(1:width(refseq), c('theta', 'var')))
+# m = match(rownames(file15), rownames(mFile))
+# mFile[m,] = file15
+# mFile15 = mFile
 
-mFile = matrix(NA, nrow=width(refseq), ncol=2, dimnames=list(1:width(refseq), c('theta', 'var')))
+m15 = f_getMutations(file.choose(), refseq)
+m17 = f_getMutations(file.choose(), refseq)
 
-m = match(rownames(file17), rownames(mFile))
+m = cbind(m15, m17)
+head(m)
+m = na.omit(m)
+par(mfrow=c(1,1))
+colnames(m) = paste(colnames(m), c(15, 15, 17, 17), sep='')
+head(m)
+coplot(logit(m[,'theta15']) ~ logit(m[,'theta17']) | log(m[,'var15']) * log(m[,'var17']))
 
-mFile[m,] = file17
-mFile17 = mFile
+dfBoth = as.data.frame(m)
 
-mFile = matrix(NA, nrow=width(refseq), ncol=2, dimnames=list(1:width(refseq), c('theta', 'var')))
-m = match(rownames(file15), rownames(mFile))
-mFile[m,] = file15
-mFile15 = mFile
+quantile(dfBoth$var15, 0:10/10)
+var15.g = cut(dfBoth$var15, breaks = quantile(dfBoth$var15, 0:10/10), labels = 0:9, include.lowest = T)
 
-mTheta = cbind(theta15=mFile15[,'theta'], theta17=mFile17[,'theta'])
+quantile(dfBoth$var17, 0:10/10)
+var17.g = cut(dfBoth$var17, breaks = quantile(dfBoth$var17, 0:10/10), labels = 0:9, include.lowest = T)
+
+dfBoth$var15.g = var15.g
+dfBoth$var17.g = var17.g
+xtabs(~ var15.g + var17.g, data=dfBoth)
+coplot(logit(dfBoth$theta15) ~ logit(dfBoth$theta17) | dfBoth$var15.g * dfBoth$var17.g)
+
+# remove the first quantiles from theta
+
 
 m15 = na.omit(mFile15)
 
-quantile(m15[,'var'], 0:10/10)
-var.groups = cut(m15[,'var'], breaks = quantile(m15[,'var'], 0:10/10), labels = 0:9)
 
 stripchart(logit(m15[,'theta']) ~ var.groups, method='jitter', pch=20)
 table(var.groups)
@@ -44,79 +69,10 @@ x = as.numeric(rownames(m15[var.groups != '9' & m15[,'theta'] < 0.2,]))
 seqcheck = refseq[[1]][x[10]:x[length(x)]]
 writeXStringSet(DNAStringSet(seqcheck), 'Results/seq.fasta')
 
-
-file13 = na.omit(t(file13))
-head(file13)
-
-file11 = f_getMutations(file.choose(), refseq)
-file11 = na.omit(t(file11))
-head(file11)
-
-file12 = f_getMutations(file.choose(), refseq)
-file12 = na.omit(t(file12))
-head(file12)
-
-file15 = f_getMutations(file.choose(), refseq)
-file15 = na.omit(t(file15))
-head(file15)
-
-file17 = f_getMutations(file.choose(), refseq)
-file17 = na.omit(t(file17))
-head(file17)
-
-file19 = f_getMutations(file.choose(), refseq)
-file19 = na.omit(t(file19))
-head(file19)
-
-file16 = f_getMutations(file.choose(), refseq)
-file16 = na.omit(t(file16))
-head(file16)
-
-
-par(mfrow=c(2,1))
-plot(log(file13[,1]), pch=20, cex=0.5, main='file13', ylab='theta' )
-plot(log(file13[,2]), pch=20, cex=0.5, main='file13', ylab='log var' )
-
-par(mfrow=c(2,1))
-plot(log(file11[,1]), pch=20, cex=0.5, main='file11', ylab='theta' )
-plot(log(file11[,2]), pch=20, cex=0.5, main='file11', ylab='log var' )
-
-par(mfrow=c(1,1))
-plot(1:nrow(file13), log(file13[,1]), pch=20, cex=0.5)
-points(1:nrow(file13), log(file11[,1]), pch=20, cex=0.5, col='red')
-points(1:nrow(file12), log(file12[,1]), pch=20, cex=0.5, col='blue')
-points(1:nrow(file15), log(file15[,1]), pch=20, cex=0.5, col='green')
-
-plot(1:nrow(file19), log(file19[,1]), pch=20, cex=0.5)
-points(1:nrow(file17), log(file17[,1]), pch=20, cex=0.5, col='blue')
-
-plot(1:nrow(file15), log(file15[,1]), pch=20, cex=0.5, col='grey')
-points(1:nrow(file17), log(file17[,1]), pch=20, cex=0.5, col='blue')
-
-plot(1:nrow(file15), (file15[,1]), pch=20, cex=0.5, col='grey')
-points(1:nrow(file17), (file17[,1]), pch=20, cex=0.5, col='blue')
-
-var15 = file15[,'var']
-var17 = file17[,'var']
-
-theta15 = file15[,'theta']
-theta17 = file17[,'theta']
-
 plot(1:nrow(file15), (var15), pch=20, cex=0.5, col='grey')
 points(1:nrow(file17), (var17), pch=20, cex=0.5, col='blue')
 
-plot(density(log(var15)))
-plot(density(theta15))
-plot(density(theta17))
-
 coplot(log(theta15[names(theta15)]) ~ log(theta17[names(theta15)]) | log(var15[names(theta15)]) * log(var17[names(theta15)]))
-m = cbind(mFile15, mFile17)
-head(m)
-m = na.omit(m)
-par(mfrow=c(1,1))
-colnames(m) = paste(colnames(m), c(15, 15, 17, 17), sep='')
-head(m)
-coplot(logit(m[,'theta15']) ~ logit(m[,'theta17']) | log(m[,'var15']) * log(m[,'var17']))
 
 
 x = as.numeric(rownames(m15[var.groups != '9' & m15[,'theta'] < 0.2,]))
@@ -171,13 +127,13 @@ getSequenceParameters = function(ivSeq, cRefBase, prior=c(A=1/2, T=1/2, G=1/2, C
 
 
 
-seq.1 = DNAString('AAAAAAAATTTTTTTCCCCCCCCGGGGGGGGG')
-seq.1 = DNAString('AAAAAAAATTTTTTTTTTTTTTTTTTGC')
-seq.1 = DNAString('AAAAAAAAAAATTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTGC')
-seq.1 = DNAString('AAAATGCCCCCCCCCCCCCCCCCCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
-
-seq = letterFrequency(seq.1, letters='ATGC', OR=0, as.prob=F)
-getSequenceParameters(seq, 'A')
+# seq.1 = DNAString('AAAAAAAATTTTTTTCCCCCCCCGGGGGGGGG')
+# seq.1 = DNAString('AAAAAAAATTTTTTTTTTTTTTTTTTGC')
+# seq.1 = DNAString('AAAAAAAAAAATTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTGC')
+# seq.1 = DNAString('AAAATGCCCCCCCCCCCCCCCCCCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
+# 
+# seq = letterFrequency(seq.1, letters='ATGC', OR=0, as.prob=F)
+# getSequenceParameters(seq, 'A')
 
 # temp.R
 
