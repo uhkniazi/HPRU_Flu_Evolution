@@ -15,6 +15,67 @@
 # mFile[m,] = file15
 # mFile15 = mFile
 
+plot.diagnostics = function(mDat, ...){
+  # remove the last quantile of the variance
+  mDat = na.omit(mDat)
+  mDat = mDat[mDat[,'var.q'] != 3, ]
+  # remove first quantile of theta
+  mDat = mDat[mDat[,'theta.q'] != 1, ]
+  # plot theta
+  plot(mDat[,'theta'], pch=20, cex=0.5, sub='Proportion of Reference', ylab='Theta', xlab='Sequence', ...)
+  plot(logit(mDat[,'theta']), pch=20, cex=0.5, sub='Proportion of Reference', ylab='Logit Theta', xlab='Sequence', ...)
+  # variance
+  plot(mDat[,'var'], pch=20, cex=0.5, sub='Dirichlet Variance', ylab='Variance', xlab='Sequence', ...)
+  plot(log(mDat[,'var']), pch=20, cex=0.5, sub='Dirichlet Variance', ylab='Log Variance', xlab='Sequence', ...)
+  # plot the mutation lambda
+  plot(mDat[,'lambda.other'], pch=20, cex=0.5,
+       sub='Mutation Rate ~ Gamma(lambda)', ylab='Theta', xlab='Sequence', ...)
+  # plot the base rates
+  plot(mDat[,'lambda.other'], logit(mDat[,'theta']), pch=20, cex=0.5, 
+       sub='Mutation Rate ~ Gamma(lambda)', ylab='Logit Theta', xlab='Lambda', ...)
+  plot(mDat[,'lambda.other'], mDat[,'theta'], pch=20, cex=0.5,
+       sub='Mutation Rate ~ Gamma(lambda)', ylab='Theta', xlab='Lambda', ...)
+  plot(mDat[,'lambda.base'], logit(mDat[,'theta']), pch=20, cex=0.5,
+       sub='Reference Base Rate ~ Gamma(lambda)', ylab='Logit Theta', xlab='Lambda', ...)
+  plot(mDat[,'lambda.base'], mDat[,'theta'], pch=20, cex=0.5,
+       sub='Reference Base Rate ~ Gamma(lambda)', ylab='Theta', xlab='Lambda', ...)
+  ## plot the density and fit distribution, for mutation rate
+  t = mDat[,'lambda.other']
+  r = range(t)
+  s = seq(floor(r[1])-0.5, ceiling(r[2])+0.5, by=1)
+  r[1] = floor(r[1])
+  r[2] = ceiling(r[2])
+  # which distribution can approximate the frequency of reactome terms
+  hist(t, prob=T, sub='Distribution of mutation rate', breaks=s,
+       xlab='Lambda', ylab='', ...)
+  # try negative binomial and poisson distributions
+  # parameterized on the means
+  dn = dnbinom(r[1]:r[2], size = mean(t), mu = mean(t))
+  dp = dpois(r[1]:r[2], mean(t))
+  lines(r[1]:r[2], dn, col='black', type='b')
+  lines(r[1]:r[2], dp, col='red', type='b')
+  legend('topright', legend =c('nbinom', 'poi'), fill = c('black', 'red'))
+}
+
+head(m15)
+plot(m15[,'theta'])
+plot(logit(m15[,'theta']))
+plot(m15[,'var'])
+plot(log(m15[,'var']))
+plot(m15[,'lambda.base'])
+plot(m15[,'lambda.other'])
+plot(logit(m15[,'theta']))
+plot(logit(m15[,'theta']))
+plot(density(m15[,'lambda.base']))
+plot(density(m15[,'lambda.other']))
+plot(m15[,'lambda.other'], m15[,'theta'], pch=20, cex=0.5)
+plot(m15[,'lambda.other'], logit(m15[,'theta']), pch=20, cex=0.5)
+plot(m15[,'lambda.other'], m15[,'theta'], pch=20, cex=0.5)
+plot(m15[,'lambda.base'], logit(m15[,'theta']), pch=20, cex=0.5)
+plot(m15[,'lambda.base'], (m15[,'theta']), pch=20, cex=0.5)
+
+
+
 m15 = f_getMutations(file.choose(), refseq)
 m17 = f_getMutations(file.choose(), refseq)
 

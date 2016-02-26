@@ -10,8 +10,49 @@ library(GenomicAlignments)
 
 refseq = readDNAStringSet('Data_external/Reference_seq/Eng 195 concatenated by Daniel.fasta')
 
+########## functions used in the script
 
-f_getMutations = function(csBamfile, oDSRef){
+plot.diagnostics = function(mDat, ...){
+  # remove the last quantile of the variance
+  mDat = na.omit(mDat)
+  mDat = mDat[mDat[,'var.q'] != 3, ]
+  # remove first quantile of theta
+  mDat = mDat[mDat[,'theta.q'] != 1, ]
+  # plot theta
+  plot(mDat[,'theta'], pch=20, cex=0.5, sub='Proportion of Reference', ylab='Theta', xlab='Sequence', ...)
+  plot(logit(mDat[,'theta']), pch=20, cex=0.5, sub='Proportion of Reference', ylab='Logit Theta', xlab='Sequence', ...)
+  # variance
+  plot(mDat[,'var'], pch=20, cex=0.5, sub='Dirichlet Variance', ylab='Variance', xlab='Sequence', ...)
+  plot(log(mDat[,'var']), pch=20, cex=0.5, sub='Dirichlet Variance', ylab='Log Variance', xlab='Sequence', ...)
+  # plot the base rates
+  plot(mDat[,'lambda.other'], logit(mDat[,'theta']), pch=20, cex=0.5, 
+       sub='Mutation Rate ~ Gamma(lambda)', ylab='Logit Theta', xlab='Lambda', ...)
+  plot(mDat[,'lambda.other'], mDat[,'theta'], pch=20, cex=0.5,
+       sub='Mutation Rate ~ Gamma(lambda)', ylab='Theta', xlab='Lambda', ...)
+  plot(mDat[,'lambda.base'], logit(mDat[,'theta']), pch=20, cex=0.5,
+       sub='Reference Base Rate ~ Gamma(lambda)', ylab='Logit Theta', xlab='Lambda', ...)
+  plot(mDat[,'lambda.base'], mDat[,'theta'], pch=20, cex=0.5,
+       sub='Reference Base Rate ~ Gamma(lambda)', ylab='Theta', xlab='Lambda', ...)
+  ## plot the density and fit distribution, for mutation rate
+  t = mDat[,'lambda.other']
+  r = range(t)
+  s = seq(floor(r[1])-0.5, ceiling(r[2])+0.5, by=1)
+  r[1] = floor(r[1])
+  r[2] = ceiling(r[2])
+  # which distribution can approximate the frequency of reactome terms
+  hist(t, prob=T, sub='Distribution of mutation rate', breaks=s,
+       xlab='Lambda', ylab='', ...)
+  # try negative binomial and poisson distributions
+  # parameterized on the means
+  dn = dnbinom(r[1]:r[2], size = mean(t), mu = mean(t))
+  dp = dpois(r[1]:r[2], mean(t))
+  lines(r[1]:r[2], dn, col='black', type='b')
+  lines(r[1]:r[2], dp, col='red', type='b')
+  legend('topright', legend =c('nbinom', 'poi'), fill = c('black', 'red'))
+}
+
+
+f_getMutations = function(csBamfile, oDSRef, iScale=1000){
   ## loading bam files
   #   oGAbam = readGAlignments(csBamfile)
   #   # reduce to get sequence length
@@ -30,10 +71,10 @@ f_getMutations = function(csBamfile, oDSRef){
   #oDSRef.sub = DNAStringSet(oDSRef[[1]], s)
   # get sequence parameters
   param = sapply(rownames(seq), function(x){
-    getSequenceParameters(seq[x,], as.character(oDSRef[[1]][as.numeric(x)]))
+    getSequenceParameters(seq[x,], as.character(oDSRef[[1]][as.numeric(x)]), iNormalizingRate = iScale)
   })
   colnames(param) = rownames(seq)
-  rownames(param) = c('theta', 'var', 'rate.base', 'rate.other')
+  rownames(param) = c('theta', 'var', 'lambda.base', 'lambda.other', 'A', 'T', 'G', 'C')
   param = t(param)
   # create factors for quantiles
   param = na.omit(param)
@@ -41,11 +82,6 @@ f_getMutations = function(csBamfile, oDSRef){
                   labels = c('q5.low', 'q90', 'q5.high'))
   theta.q = cut(param[,'theta'],breaks = quantile(param[,'theta'], c(0, 0.05, 0.95, 1)), include.lowest = T, 
                     labels = c('q5.low', 'q90', 'q5.high'))
-#   rate.base.q = cut(param[,'rate.base'],breaks = quantile(param[,'rate.base'], c(0, 0.05, 0.95, 1)), include.lowest = T, 
-#                 labels = c('q5.low', 'q90', 'q5.high'))
-#   rate.other.q = cut(param[,'rate.other'],breaks = quantile(param[,'rate.other'], c(0, 0.05, 0.95, 1)), include.lowest = T, 
-#                 labels = c('q5.low', 'q90', 'q5.high'))
-#   
   param = cbind(param, var.q, theta.q)
   #return(t(param))
   ## reformat the data matrix 
