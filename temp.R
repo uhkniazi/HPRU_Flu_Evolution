@@ -27,9 +27,6 @@ plot.diagnostics = function(mDat, ...){
   # variance
   plot(mDat[,'var'], pch=20, cex=0.5, sub='Dirichlet Variance', ylab='Variance', xlab='Sequence', ...)
   plot(log(mDat[,'var']), pch=20, cex=0.5, sub='Dirichlet Variance', ylab='Log Variance', xlab='Sequence', ...)
-  # plot the mutation lambda
-  plot(mDat[,'lambda.other'], pch=20, cex=0.5,
-       sub='Mutation Rate ~ Gamma(lambda)', ylab='Theta', xlab='Sequence', ...)
   # plot the base rates
   plot(mDat[,'lambda.other'], logit(mDat[,'theta']), pch=20, cex=0.5, 
        sub='Mutation Rate ~ Gamma(lambda)', ylab='Logit Theta', xlab='Lambda', ...)
@@ -45,16 +42,21 @@ plot.diagnostics = function(mDat, ...){
   s = seq(floor(r[1])-0.5, ceiling(r[2])+0.5, by=1)
   r[1] = floor(r[1])
   r[2] = ceiling(r[2])
+  #dn = dnbinom(r[1]:r[2], size = mean(t), mu = mean(t))
+  #dp = dpois(r[1]:r[2], mean(t))
+  dg = dgamma(r[1]:r[2], mean(t), 1)
+  df = table(round(t))
+  df = df/sum(df)
   # which distribution can approximate the frequency of reactome terms
   hist(t, prob=T, sub='Distribution of mutation rate', breaks=s,
-       xlab='Lambda', ylab='', ...)
+       xlab='Lambda', ylab='', ylim=c(0, max(dg, df)), ...)
   # try negative binomial and poisson distributions
   # parameterized on the means
-  dn = dnbinom(r[1]:r[2], size = mean(t), mu = mean(t))
-  dp = dpois(r[1]:r[2], mean(t))
-  lines(r[1]:r[2], dn, col='black', type='b')
-  lines(r[1]:r[2], dp, col='red', type='b')
-  legend('topright', legend =c('nbinom', 'poi'), fill = c('black', 'red'))
+  lines(r[1]:r[2], dg, col='black', type='b')
+  #lines(r[1]:r[2], dp, col='red', type='b')
+  #lines(r[1]:r[2], dg, col='blue', type='b')
+  points(round(qgamma(0.95, mean(t), 1), 0), 0, pch=20, col='red')
+  legend('topright', legend =c('Gamma'), fill = c('black'))
 }
 
 head(m15)

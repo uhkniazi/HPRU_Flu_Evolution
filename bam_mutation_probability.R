@@ -39,20 +39,36 @@ plot.diagnostics = function(mDat, ...){
   s = seq(floor(r[1])-0.5, ceiling(r[2])+0.5, by=1)
   r[1] = floor(r[1])
   r[2] = ceiling(r[2])
+  #dn = dnbinom(r[1]:r[2], size = mean(t), mu = mean(t))
+  #dp = dpois(r[1]:r[2], mean(t))
+  dg = dgamma(r[1]:r[2], mean(t), 1)
+  df = table(round(t))
+  df = df/sum(df)
   # which distribution can approximate the frequency of reactome terms
   hist(t, prob=T, sub='Distribution of mutation rate', breaks=s,
-       xlab='Lambda', ylab='', ...)
+       xlab='Lambda', ylab='', ylim=c(0, max(dg, df)), ...)
   # try negative binomial and poisson distributions
   # parameterized on the means
-  dn = dnbinom(r[1]:r[2], size = mean(t), mu = mean(t))
-  dp = dpois(r[1]:r[2], mean(t))
-  lines(r[1]:r[2], dn, col='black', type='b')
-  lines(r[1]:r[2], dp, col='red', type='b')
-  legend('topright', legend =c('nbinom', 'poi'), fill = c('black', 'red'))
+  lines(r[1]:r[2], dg, col='black', type='b')
+  #lines(r[1]:r[2], dp, col='red', type='b')
+  #lines(r[1]:r[2], dg, col='blue', type='b')
+  points(round(qgamma(0.95, mean(t), 1), 0), 0, pch=20, col='red')
+  legend('topright', legend =c('Gamma'), fill = c('black'))
+  ## plot the lamda rates greater than cutoff
+  ## NOTE: a possible error may need correcting, if there are no values over 0.95
+  c = qgamma(0.95, mean(t), 1)
+  i = which(mDat[,'lambda.other'] > c)
+  # get limit of vector from the row names of mDat
+  l = as.numeric(rownames(mDat)[nrow(mDat)])
+  x = rep(0, times = l)
+  rn = as.numeric(rownames(mDat)[i])
+  x[rn] = mDat[i,'lambda.other']
+  plot(x, pch=20, cex=0.5, sub='Significant Mutation Rate ~ Gamma(lambda)', ylab='Lambda', xlab='Sequence', 
+      ylim=c(min(x[rn]-1), max(x[rn])),  ...)
 }
 
 
-f_getMutations = function(csBamfile, oDSRef, iScale=1000){
+f_getMutations = function(csBamfile, oDSRef, iScale=1){
   ## loading bam files
   #   oGAbam = readGAlignments(csBamfile)
   #   # reduce to get sequence length
@@ -63,7 +79,7 @@ f_getMutations = function(csBamfile, oDSRef, iScale=1000){
   # process chunks at a time
   # oGRbam.bin = f_split_GRanges_by_length(oGRbam, 1000)
   oPile = pileup(csBamfile, #scanBamParam = ScanBamParam(which = oGRbam), 
-                 pileupParam = PileupParam(distinguish_strands = F, max_depth = 1000))
+                 pileupParam = PileupParam(distinguish_strands = F, max_depth = 2000))
   # get the sequence
   seq = f_getSeq(oPile)
   # adjust the reference sequence size to the aligned pileup data
