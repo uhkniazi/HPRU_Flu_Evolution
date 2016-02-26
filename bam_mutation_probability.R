@@ -67,6 +67,17 @@ plot.diagnostics = function(mDat, ...){
       ylim=c(min(x[rn]-1), max(x[rn])),  ...)
 }
 
+getSignificantPositions = function(mDat){
+  mDat = na.omit(mDat)
+  mDat = mDat[mDat[,'var.q'] != 3, ]
+  # remove first quantile of theta
+  mDat = mDat[mDat[,'theta.q'] != 1, ]
+  # get index of significant positions
+  c = qgamma(0.95, mean(mDat[,'lambda.other']), 1)
+  i = which(mDat[,'lambda.other'] > c)
+  return(mDat[i,])
+}
+
 
 f_getMutations = function(csBamfile, oDSRef, iScale=1){
   ## loading bam files

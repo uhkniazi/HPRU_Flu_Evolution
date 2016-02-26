@@ -15,49 +15,21 @@
 # mFile[m,] = file15
 # mFile15 = mFile
 
-plot.diagnostics = function(mDat, ...){
-  # remove the last quantile of the variance
+getSignificantPositions = function(mDat){
   mDat = na.omit(mDat)
   mDat = mDat[mDat[,'var.q'] != 3, ]
   # remove first quantile of theta
   mDat = mDat[mDat[,'theta.q'] != 1, ]
-  # plot theta
-  plot(mDat[,'theta'], pch=20, cex=0.5, sub='Proportion of Reference', ylab='Theta', xlab='Sequence', ...)
-  plot(logit(mDat[,'theta']), pch=20, cex=0.5, sub='Proportion of Reference', ylab='Logit Theta', xlab='Sequence', ...)
-  # variance
-  plot(mDat[,'var'], pch=20, cex=0.5, sub='Dirichlet Variance', ylab='Variance', xlab='Sequence', ...)
-  plot(log(mDat[,'var']), pch=20, cex=0.5, sub='Dirichlet Variance', ylab='Log Variance', xlab='Sequence', ...)
-  # plot the base rates
-  plot(mDat[,'lambda.other'], logit(mDat[,'theta']), pch=20, cex=0.5, 
-       sub='Mutation Rate ~ Gamma(lambda)', ylab='Logit Theta', xlab='Lambda', ...)
-  plot(mDat[,'lambda.other'], mDat[,'theta'], pch=20, cex=0.5,
-       sub='Mutation Rate ~ Gamma(lambda)', ylab='Theta', xlab='Lambda', ...)
-  plot(mDat[,'lambda.base'], logit(mDat[,'theta']), pch=20, cex=0.5,
-       sub='Reference Base Rate ~ Gamma(lambda)', ylab='Logit Theta', xlab='Lambda', ...)
-  plot(mDat[,'lambda.base'], mDat[,'theta'], pch=20, cex=0.5,
-       sub='Reference Base Rate ~ Gamma(lambda)', ylab='Theta', xlab='Lambda', ...)
-  ## plot the density and fit distribution, for mutation rate
-  t = mDat[,'lambda.other']
-  r = range(t)
-  s = seq(floor(r[1])-0.5, ceiling(r[2])+0.5, by=1)
-  r[1] = floor(r[1])
-  r[2] = ceiling(r[2])
-  #dn = dnbinom(r[1]:r[2], size = mean(t), mu = mean(t))
-  #dp = dpois(r[1]:r[2], mean(t))
-  dg = dgamma(r[1]:r[2], mean(t), 1)
-  df = table(round(t))
-  df = df/sum(df)
-  # which distribution can approximate the frequency of reactome terms
-  hist(t, prob=T, sub='Distribution of mutation rate', breaks=s,
-       xlab='Lambda', ylab='', ylim=c(0, max(dg, df)), ...)
-  # try negative binomial and poisson distributions
-  # parameterized on the means
-  lines(r[1]:r[2], dg, col='black', type='b')
-  #lines(r[1]:r[2], dp, col='red', type='b')
-  #lines(r[1]:r[2], dg, col='blue', type='b')
-  points(round(qgamma(0.95, mean(t), 1), 0), 0, pch=20, col='red')
-  legend('topright', legend =c('Gamma'), fill = c('black'))
+  # get index of significant positions
+  c = qgamma(0.95, mean(mDat[,'lambda.other']), 1)
+  i = which(mDat[,'lambda.other'] > c)
+  return(mDat[i,])
 }
+
+
+
+
+
 
 head(m15)
 plot(m15[,'theta'])
