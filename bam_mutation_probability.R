@@ -67,14 +67,28 @@ plot.diagnostics = function(mDat, ...){
       ylim=c(min(x[rn]-1), max(x[rn])),  ...)
 }
 
-getSignificantPositions = function(mDat){
+getSignificantPositions = function(mDat, p.adj.cut=0.05, add=F, ...){
   mDat = na.omit(mDat)
   mDat = mDat[mDat[,'var.q'] != 3, ]
   # remove first quantile of theta
   mDat = mDat[mDat[,'theta.q'] != 1, ]
   # get index of significant positions
-  c = qgamma(0.95, mean(mDat[,'lambda.other']), 1)
-  i = which(mDat[,'lambda.other'] > c)
+#   c = qgamma(0.95, mean(mDat[,'lambda.other']), 1)
+#   i = which(mDat[,'lambda.other'] > c)
+  p.val = pgamma(mDat[,'lambda.other'], shape = mean(mDat[,'lambda.other']), 1, lower.tail = F)
+  p.adj = p.adjust(p.val, 'BH')
+  mDat = cbind(mDat, p.val, p.adj)
+  i = which(mDat[,'p.adj'] < p.adj.cut)
+  l = as.numeric(rownames(mDat)[nrow(mDat)])
+  x = rep(0, times = l)
+  rn = as.numeric(rownames(mDat)[i])
+  x[rn] = mDat[i,'lambda.other']
+  if (!add) {
+    plot(x, pch=20, cex=0.5, sub='Significant Mutation Rate ~ Gamma(lambda)', ylab='Lambda', xlab='Sequence', 
+         ylim=c(min(x[rn]-1), max(x[rn])),  ...)
+  } else {
+    points(x, pch=20, cex=0.5, ...)
+  }
   return(mDat[i,])
 }
 

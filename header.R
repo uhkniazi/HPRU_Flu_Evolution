@@ -97,7 +97,7 @@ getSequenceParameters = function(ivSeq, cRefBase, prior=c(A=1/2, T=1/2, G=1/2, C
   }
   # posterior gamma, a component of the dirichlet distribution
   ## see gelman P 583 and bayesian computations with R page 66
-  ## this function standardizes/normalizes the gamma rate to 100
+  ## this function standardizes/normalizes the gamma rate (if required)
   ## which is useful when comparing multiple samples sequenced at different depths
   getPosteriorGamma = function(alpha, base, n=1000, rate=1){
     # if rate is 1 then do not rescale
