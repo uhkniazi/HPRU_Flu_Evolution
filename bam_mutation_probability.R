@@ -33,6 +33,8 @@ plot.diagnostics = function(mDat, ...){
        sub='Reference Base Rate ~ Gamma(lambda)', ylab='Logit Theta', xlab='Lambda', ...)
   plot(mDat[,'lambda.base'], mDat[,'theta'], pch=20, cex=0.5,
        sub='Reference Base Rate ~ Gamma(lambda)', ylab='Theta', xlab='Lambda', ...)
+  plot(mDat[,'lambda.base'], mDat[,'lambda.other'], pch=20, cex=0.5,
+       sub='Ref rate vs Mutation rate', ylab='Lambda Mutation', xlab='Lambda Base', ...)
   ## plot the density and fit distribution, for mutation rate
   t = mDat[,'lambda.other']
   r = range(t)
@@ -83,7 +85,7 @@ getSignificantPositions = function(mDat, p.adj.cut=0.05, add=F, ...){
   x = rep(0, times = l)
   rn = as.numeric(rownames(mDat)[i])
   x[rn] = mDat[i,'lambda.other']
-  if (!add) {
+  if (!add && length(i) > 0) {
     plot(x, pch=20, cex=0.5, sub='Significant Mutation Rate ~ Gamma(lambda)', ylab='Lambda', xlab='Sequence', 
          ylim=c(min(x[rn]-1), max(x[rn])),  ...)
   } else {
@@ -132,5 +134,87 @@ f_getMutations = function(csBamfile, oDSRef){
   return(mFile)
 }
 
+csBamfiles = list.files('Data_external/Sam/', '*.bam$', full.names = T)
 
+## calculate data for each bam file
+lMutation = vector('list', length=length(csBamfiles))
+lMutation = lapply(csBamfiles, f_getMutations, refseq)
+csvSamples = gsub('Data_external/Sam//(\\w+)\\.bam', '\\1', csBamfiles)
+names(lMutation) = csvSamples
 
+lapply(names(lMutation), function(x) plot.diagnostics(lMutation[[x]], main=x))
+lSignificant = lapply(names(lMutation), function(x) getSignificantPositions(lMutation[[x]], p.adj.cut = 0.05, main=x))
+
+## all data together
+mAllMutants.sig = matrix(0, nrow=width(refseq), ncol=length(csvSamples), dimnames=list(1:width(refseq), csvSamples))
+
+for(i in 1:ncol(mAllMutants.sig)){
+  m = match(rownames(lSignificant[[i]]), rownames(mAllMutants.sig))
+  mAllMutants.sig[m,i] = lSignificant[[i]][,'lambda.other']
+}
+
+mAllMutants = matrix(NA, nrow=width(refseq), ncol=length(csvSamples), dimnames=list(1:width(refseq), csvSamples))
+
+for(i in 1:ncol(mAllMutants)){
+  # remove noisy areas
+  mDat = na.omit(lMutation[[i]])
+  mDat = mDat[mDat[,'var.q'] != 3, ]
+  # remove first quantile of theta
+  mDat = mDat[mDat[,'theta.q'] != 1, ]
+  m = match(rownames(mDat), rownames(mAllMutants))
+  mAllMutants[m,i] = mDat[,'lambda.other']
+}
+
+matplot(mAllMutants.sig, type='p', pch=20, cex=0.5, main='position of significant residues', col=1:ncol(mAllMutants))
+legend('bottomright', legend = colnames(mAllMutants), fill=1:ncol(mAllMutants))
+
+# density of gamma rates
+sapply(colnames(mAllMutants), function(n) {
+  t = na.omit(mAllMutants[,n])
+  r = range(t)
+  s = seq(floor(r[1])-0.5, ceiling(r[2])+0.5, by=1)
+  r[1] = floor(r[1])
+  r[2] = ceiling(r[2])
+  dg = dgamma(r[1]:r[2], mean(t), 1)
+  df = table(round(t))
+  df = df/sum(df)
+  # which distribution can approximate the frequency of reactome terms
+  hist(t, prob=T, sub='Distribution of mutation rate', breaks=s,
+       xlab='Lambda', ylab='', ylim=c(0, max(dg, df)), main=paste(n, 'Gamma Mutation Rate'))
+  # parameterized on the means
+  lines(r[1]:r[2], dg, col='black', type='b')
+  points(round(qgamma(0.95, mean(t), 1), 0), 0, pch=20, col='red')
+  legend('topright', legend =c('Gamma'), fill = c('black'))
+  })
+
+fSamples = factor(c('Drug', 'Drug', 'Cont', 'Wild', 'Drug', 'Drug', 'Cont', 'Drug', 'Cont'), levels = c('Wild', 'Cont', 'Drug'))
+
+mAllMutants.pool = na.omit(mAllMutants)
+
+colnames(mAllMutants.pool) = fSamples
+
+ivDrug = rowMeans(mAllMutants.pool[,fSamples == 'Drug'])
+ivWild = (mAllMutants.pool[,'Wild'])
+ivCont = rowMeans(mAllMutants.pool[,fSamples == 'Cont'])
+cor(cbind(ivWild, ivDrug, ivCont))
+
+mAllMutants.pool = cbind(ivDrug, ivWild, ivCont)
+
+# density of gamma rates
+sapply(colnames(mAllMutants.pool), function(n) {
+  t = na.omit(mAllMutants.pool[,n])
+  r = range(t)
+  s = seq(floor(r[1])-0.5, ceiling(r[2])+0.5, by=1)
+  r[1] = floor(r[1])
+  r[2] = ceiling(r[2])
+  dg = dgamma(r[1]:r[2], mean(t), 1)
+  df = table(round(t))
+  df = df/sum(df)
+  # which distribution can approximate the frequency of reactome terms
+  hist(t, prob=T, sub='Distribution of mutation rate', breaks=s,
+       xlab='Lambda', ylab='', ylim=c(0, max(dg, df)), main=paste(n, 'Gamma Mutation Rate'))
+  # parameterized on the means
+  lines(r[1]:r[2], dg, col='black', type='b')
+  points(round(qgamma(0.95, mean(t), 1), 0), 0, pch=20, col='red')
+  legend('topright', legend =c('Gamma'), fill = c('black'))
+})
