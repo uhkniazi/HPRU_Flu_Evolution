@@ -62,8 +62,7 @@ f_getSeq = function(pile){
 
 
 
-getSequenceParameters = function(ivSeq, cRefBase, prior=c(A=1/2, T=1/2, G=1/2, C=1/2), iSize=1000, 
-                                 iNormalizingRate=1){
+getSequenceParameters = function(ivSeq, cRefBase, prior=c(A=1/2, T=1/2, G=1/2, C=1/2), iSize=1000){
   if(!require(LearnBayes)) stop('R Package LearnBayes required')
   ## internal functions
   # get alpha values for dirichlet posterior
@@ -97,12 +96,7 @@ getSequenceParameters = function(ivSeq, cRefBase, prior=c(A=1/2, T=1/2, G=1/2, C
   }
   # posterior gamma, a component of the dirichlet distribution
   ## see gelman P 583 and bayesian computations with R page 66
-  ## this function standardizes/normalizes the gamma rate (if required)
-  ## which is useful when comparing multiple samples sequenced at different depths
-  getPosteriorGamma = function(alpha, base, n=1000, rate=1){
-    # if rate is 1 then do not rescale
-    if (rate == 1) {alpha.scale = alpha } else {
-      alpha.scale = (alpha/sum(alpha)) * rate}
+  getPosteriorGamma = function(alpha.scale, base, n=1000){
     i = which(names(alpha.scale) == base)
     alpha.new = c(alpha.scale[i], sum(alpha.scale[-i]))
     names(alpha.new) = c('Base', 'Other')
@@ -125,7 +119,7 @@ getSequenceParameters = function(ivSeq, cRefBase, prior=c(A=1/2, T=1/2, G=1/2, C
   var = sum(var)
   theta = colMeans(p)[cRefBase]
   if (is.na(theta)) {rate=c('Base'= NA, 'Other'=NA) } else {
-    rate = round(colMeans(getPosteriorGamma(a, cRefBase, iSize, iNormalizingRate)), 2)}
+    rate = round(colMeans(getPosteriorGamma(a, cRefBase, iSize)), 2)}
   return(c(theta=theta, var=var, lambda.base=rate['Base'], lambda.other=rate['Other'], ivSeq))
 }
 

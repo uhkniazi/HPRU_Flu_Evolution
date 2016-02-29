@@ -93,7 +93,7 @@ getSignificantPositions = function(mDat, p.adj.cut=0.05, add=F, ...){
 }
 
 
-f_getMutations = function(csBamfile, oDSRef, iScale=1){
+f_getMutations = function(csBamfile, oDSRef){
   ## loading bam files
   #   oGAbam = readGAlignments(csBamfile)
   #   # reduce to get sequence length
@@ -112,7 +112,7 @@ f_getMutations = function(csBamfile, oDSRef, iScale=1){
   #oDSRef.sub = DNAStringSet(oDSRef[[1]], s)
   # get sequence parameters
   param = sapply(rownames(seq), function(x){
-    getSequenceParameters(seq[x,], as.character(oDSRef[[1]][as.numeric(x)]), iNormalizingRate = iScale)
+    getSequenceParameters(seq[x,], as.character(oDSRef[[1]][as.numeric(x)]))#, iNormalizingRate = iScale)
   })
   colnames(param) = rownames(seq)
   rownames(param) = c('theta', 'var', 'lambda.base', 'lambda.other', 'A', 'T', 'G', 'C')
