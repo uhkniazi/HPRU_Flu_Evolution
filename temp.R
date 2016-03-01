@@ -1,19 +1,141 @@
-# logit = function(p) log(p/(1-p))
-# logit.inv = function(p) exp(p)/(exp(p)+1) 
-# 
-# mFile = matrix(NA, nrow=width(refseq), ncol=2, dimnames=list(1:width(refseq), c('theta', 'var')))
-# 
-# m = match(rownames(file17), rownames(mFile))
-# 
-# mFile[m,] = file17
-# mFile17 = mFile
-# 
-# file15 = t(file15)
-# head(file15)
-# mFile = matrix(NA, nrow=width(refseq), ncol=2, dimnames=list(1:width(refseq), c('theta', 'var')))
-# m = match(rownames(file15), rownames(mFile))
-# mFile[m,] = file15
-# mFile15 = mFile
+mDat = lMutation[[1]]
+mDat = na.omit(mDat)
+mDat = mDat[mDat[,'var.q'] != 3, ]
+mDat = mDat[mDat[,'theta.q'] != 1, ]
+head(mDat)
+mDat = mDat[,c(2, 4)]
+hist(mDat[,1])
+hist(log(mDat[,1]))
+mDat[,1] = log(mDat[,1])
+head(mDat)
+quantile(mDat[,1])
+cut.pts = cut(mDat[,1], breaks = quantile(mDat[,1], 0:10/10), include.lowest = T)
+table(cut.pts)
+cut.pts = cut(mDat[,1], breaks = quantile(mDat[,1], 0:10/10), include.lowest = T, labels = c(1:10))
+table(cut.pts)
+mDat = cbind(mDat, cut.pts)
+head(mDat)
+plot(as.factor(mDat[,'cut.pts']), mDat[,'lambda.other'])
+tapply(mDat[,'lambda.other'], mDat[,'cut.pts'], mean)
+tapply(mDat[,'lambda.other'], mDat[,'cut.pts'], summary)
+
+# at each cutoff model the gamma variable
+plot.variance.cutoffs = function(lambda, beta=1, cut.pts){
+  cut.pts = as.numeric(cut.pts)
+  pos = max(cut.pts)
+  for (i in 1:pos){
+    # get the gamma variable
+    ind = which(cut.pts == i)
+    t = lambda[ind]
+    r = range(t)
+    s = seq(floor(r[1])-0.5, ceiling(r[2])+0.5, by=1)
+    r[1] = floor(r[1])
+    r[2] = ceiling(r[2])
+    dg = dgamma(r[1]:r[2], mean(t), 1)
+    df = table(round(t))
+    df = df/sum(df)
+    # which distribution can approximate the frequency of reactome terms
+    hist(t, prob=T, sub=paste('Distribution of mutation rate at', i), breaks=s,
+         xlab='Lambda', ylab='', ylim=c(0, max(dg, df)), main='Gamma Mutation Rate')
+    # parameterized on the means
+    lines(r[1]:r[2], dg, col='black', type='b')
+    points(round(qgamma(0.95, mean(t), beta), 0), 0, pch=20, col='red')
+    legend('topright', legend =c('Gamma'), fill = c('black'))
+  }
+}
+
+plot.variance.cutoffs(mDat[,2], cut.pts = cut.pts)
+
+mDat.var = mDat
+mDat = lMutation[[1]]
+mDat = na.omit(mDat)
+mDat = mDat[mDat[,'var.q'] != 3, ]
+mDat = mDat[mDat[,'theta.q'] != 1, ]
+head(mDat)
+mDat = mDat[,c(1, 4)]
+hist(mDat[,1])
+head(mDat)
+quantile(mDat[,1])
+cut.pts = cut(mDat[,1], breaks = quantile(mDat[,1], 0:10/10), include.lowest = T)
+table(cut.pts)
+cut.pts = cut(mDat[,1], breaks = quantile(mDat[,1], 0:10/10), include.lowest = T, labels = paste('t', 1:10))
+table(cut.pts)
+mDat = cbind(mDat, cut.pts)
+head(mDat)
+plot(as.factor(mDat[,'cut.pts']), mDat[,'lambda.other'])
+tapply(mDat[,'lambda.other'], mDat[,'cut.pts'], mean)
+tapply(mDat[,'lambda.other'], mDat[,'cut.pts'], summary)
+
+mDat.both = cbind(mDat, mDat.var)
+head(mDat.both)
+colnames(mDat.both) = c('theta', 'lambda', 'cut.theta', 'var', 'lambda', 'cut.var')
+mDat = mDat.both[,c(1, 2, 4, 3, 6)]
+head(mDat)
+
+coplot(mDat[,'cut.theta'] ~ mDat[,'lambda'] | as.factor(mDat[, 'cut.var']))
+
+
+midpt = seq(0.05, 0.95, by = 0.1)
+prior = c(1, 5.2, 8, 7.2, 4.6, 2.1, 0.7, 0.1, 0, 0)
+prior = prior/sum(prior)
+p = seq(0, 1, length=500)
+
+
+plot.diagnostics.2 = function(mDat, ...){
+  # remove the last quantile of the variance
+  mDat = na.omit(mDat)
+  mDat = mDat[mDat[,'var.q'] != 3, ]
+  # remove first quantile of theta
+  mDat = mDat[mDat[,'theta.q'] != 1, ]
+  # plot theta
+  plot(mDat[,'theta'], pch=20, cex=0.5, sub='Proportion of Reference', ylab='Theta', xlab='Sequence', ...)
+  plot(logit(mDat[,'theta']), pch=20, cex=0.5, sub='Proportion of Reference', ylab='Logit Theta', xlab='Sequence', ...)
+  # variance
+  plot(mDat[,'var'], pch=20, cex=0.5, sub='Dirichlet Variance', ylab='Variance', xlab='Sequence', ...)
+  plot(log(mDat[,'var']), pch=20, cex=0.5, sub='Dirichlet Variance', ylab='Log Variance', xlab='Sequence', ...)
+  # plot the base rates
+  plot(mDat[,'lambda.other'], logit(mDat[,'theta']), pch=20, cex=0.5, 
+       sub='Mutation Rate ~ Gamma(lambda)', ylab='Logit Theta', xlab='Lambda', ...)
+  plot(mDat[,'lambda.other'], mDat[,'theta'], pch=20, cex=0.5,
+       sub='Mutation Rate ~ Gamma(lambda)', ylab='Theta', xlab='Lambda', ...)
+  plot(mDat[,'lambda.base'], logit(mDat[,'theta']), pch=20, cex=0.5,
+       sub='Reference Base Rate ~ Gamma(lambda)', ylab='Logit Theta', xlab='Lambda', ...)
+  plot(mDat[,'lambda.base'], mDat[,'theta'], pch=20, cex=0.5,
+       sub='Reference Base Rate ~ Gamma(lambda)', ylab='Theta', xlab='Lambda', ...)
+  coplot(mDat[,'theta'] ~ mDat[,'lambda.other'] | as.factor(mDat[,'var.q']), columns = 3)
+  ## plot the density and fit distribution, for mutation rate
+  t = mDat[,'lambda.other']
+  r = range(t)
+  s = seq(floor(r[1])-0.5, ceiling(r[2])+0.5, by=1)
+  r[1] = floor(r[1])
+  r[2] = ceiling(r[2])
+  #dn = dnbinom(r[1]:r[2], size = mean(t), mu = mean(t))
+  #dp = dpois(r[1]:r[2], mean(t))
+  dg = dgamma(r[1]:r[2], mean(t), 1)
+  df = table(round(t))
+  df = df/sum(df)
+  # which distribution can approximate the frequency of reactome terms
+  hist(t, prob=T, sub='Distribution of mutation rate', breaks=s,
+       xlab='Lambda', ylab='', ylim=c(0, max(dg, df)), ...)
+  # try negative binomial and poisson distributions
+  # parameterized on the means
+  lines(r[1]:r[2], dg, col='black', type='b')
+  #lines(r[1]:r[2], dp, col='red', type='b')
+  #lines(r[1]:r[2], dg, col='blue', type='b')
+  points(round(qgamma(0.95, mean(t), 1), 0), 0, pch=20, col='red')
+  legend('topright', legend =c('Gamma'), fill = c('black'))
+  ## plot the lamda rates greater than cutoff
+  ## NOTE: a possible error may need correcting, if there are no values over 0.95
+  c = qgamma(0.95, mean(t), 1)
+  i = which(mDat[,'lambda.other'] > c)
+  # get limit of vector from the row names of mDat
+  l = as.numeric(rownames(mDat)[nrow(mDat)])
+  x = rep(0, times = l)
+  rn = as.numeric(rownames(mDat)[i])
+  x[rn] = mDat[i,'lambda.other']
+  plot(x, pch=20, cex=0.5, sub='Significant Mutation Rate ~ Gamma(lambda)', ylab='Lambda', xlab='Sequence', 
+       ylim=c(min(x[rn]-1), max(x[rn])),  ...)
+}
 
 getSignificantPositions = function(mDat){
   mDat = na.omit(mDat)

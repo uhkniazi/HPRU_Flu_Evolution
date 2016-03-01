@@ -46,7 +46,7 @@ plot.diagnostics = function(mDat, ...){
   dg = dgamma(r[1]:r[2], mean(t), 1)
   df = table(round(t))
   df = df/sum(df)
-  # which distribution can approximate the frequency of reactome terms
+  # which distribution can approximate the frequency
   hist(t, prob=T, sub='Distribution of mutation rate', breaks=s,
        xlab='Lambda', ylab='', ylim=c(0, max(dg, df)), ...)
   # try negative binomial and poisson distributions
@@ -67,6 +67,35 @@ plot.diagnostics = function(mDat, ...){
   x[rn] = mDat[i,'lambda.other']
   plot(x, pch=20, cex=0.5, sub='Significant Mutation Rate ~ Gamma(lambda)', ylab='Lambda', xlab='Sequence', 
       ylim=c(min(x[rn]-1), max(x[rn])),  ...)
+  ## plot all the rates at different cutoffs of the theta
+  mDat = mDat[,c('theta', 'lambda.other')]
+  cut.pts = cut(mDat[,1], breaks = quantile(mDat[,1], 0:10/10), include.lowest = T, labels = c(1:10))
+  # at each cutoff model the gamma variable
+  # define function
+  plot.lambda.cutoffs = function(lambda, beta=1, cut.pts){
+    cut.pts = as.numeric(cut.pts)
+    pos = max(cut.pts)
+    for (i in pos:1){
+      # get the gamma variable
+      ind = which(cut.pts >= i)
+      t = lambda[ind]
+      r = range(t)
+      s = seq(floor(r[1])-0.5, ceiling(r[2])+0.5, by=1)
+      r[1] = floor(r[1])
+      r[2] = ceiling(r[2])
+      dg = dgamma(r[1]:r[2], mean(t), 1)
+      df = table(round(t))
+      df = df/sum(df)
+      # which distribution can approximate the frequency of reactome terms
+      hist(t, prob=T, sub=paste('Distribution of mutation rate at', i), breaks=s,
+           xlab='Lambda', ylab='', ylim=c(0, max(dg, df)), main='Gamma Mutation Rate')
+      # parameterized on the means
+      lines(r[1]:r[2], dg, col='black', type='b')
+      points(round(qgamma(0.95, mean(t), beta), 0), 0, pch=20, col='red')
+      legend('topright', legend =c('Gamma'), fill = c('black'))
+    }
+  }
+  plot.lambda.cutoffs(mDat[,'lambda.other'], cut.pts = cut.pts)
 }
 
 getSignificantPositions = function(mDat, p.adj.cut=0.05, add=F, ...){
@@ -85,6 +114,7 @@ getSignificantPositions = function(mDat, p.adj.cut=0.05, add=F, ...){
   x = rep(0, times = l)
   rn = as.numeric(rownames(mDat)[i])
   x[rn] = mDat[i,'lambda.other']
+  # check if no significant genes
   if (!add && length(i) > 0) {
     plot(x, pch=20, cex=0.5, sub='Significant Mutation Rate ~ Gamma(lambda)', ylab='Lambda', xlab='Sequence', 
          ylim=c(min(x[rn]-1), max(x[rn])),  ...)
@@ -106,7 +136,7 @@ f_getMutations = function(csBamfile, oDSRef){
   # process chunks at a time
   # oGRbam.bin = f_split_GRanges_by_length(oGRbam, 1000)
   oPile = pileup(csBamfile, #scanBamParam = ScanBamParam(which = oGRbam), 
-                 pileupParam = PileupParam(distinguish_strands = F, max_depth = 2000))
+                 pileupParam = PileupParam(distinguish_strands = F, max_depth = 1000))
   # get the sequence
   seq = f_getSeq(oPile)
   # adjust the reference sequence size to the aligned pileup data
@@ -145,7 +175,7 @@ names(lMutation) = csvSamples
 lapply(names(lMutation), function(x) plot.diagnostics(lMutation[[x]], main=x))
 lSignificant = lapply(names(lMutation), function(x) getSignificantPositions(lMutation[[x]], p.adj.cut = 0.05, main=x))
 
-## all data together
+## all the samples in one matrix together
 mAllMutants.sig = matrix(0, nrow=width(refseq), ncol=length(csvSamples), dimnames=list(1:width(refseq), csvSamples))
 
 for(i in 1:ncol(mAllMutants.sig)){
@@ -165,6 +195,7 @@ for(i in 1:ncol(mAllMutants)){
   mAllMutants[m,i] = mDat[,'lambda.other']
 }
 
+## various plots 
 matplot(mAllMutants.sig, type='p', pch=20, cex=0.5, main='position of significant residues', col=1:ncol(mAllMutants))
 legend('bottomright', legend = colnames(mAllMutants), fill=1:ncol(mAllMutants))
 
@@ -178,7 +209,7 @@ sapply(colnames(mAllMutants), function(n) {
   dg = dgamma(r[1]:r[2], mean(t), 1)
   df = table(round(t))
   df = df/sum(df)
-  # which distribution can approximate the frequency of reactome terms
+  # which distribution can approximate the frequency
   hist(t, prob=T, sub='Distribution of mutation rate', breaks=s,
        xlab='Lambda', ylab='', ylim=c(0, max(dg, df)), main=paste(n, 'Gamma Mutation Rate'))
   # parameterized on the means
