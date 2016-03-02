@@ -38,23 +38,16 @@ plot.diagnostics = function(mDat, ...){
   ## plot the density and fit distribution, for mutation rate
   t = mDat[,'lambda.other']
   r = range(t)
-  s = seq(floor(r[1])-0.5, ceiling(r[2])+0.5, by=1)
-  r[1] = floor(r[1])
-  r[2] = ceiling(r[2])
-  #dn = dnbinom(r[1]:r[2], size = mean(t), mu = mean(t))
-  #dp = dpois(r[1]:r[2], mean(t))
-  dg = dgamma(r[1]:r[2], mean(t), 1)
-  df = table(round(t))
-  df = df/sum(df)
+  s = seq(max(0.5, floor(r[1]))-0.5, ceiling(r[2])+0.5, by=1)
+  # calculate the mid points for histogram/discrete distribution
+  h = hist(t, breaks=s, plot=F)
+  dg = dgamma(h$mids, mean(t), 1)
   # which distribution can approximate the frequency
   hist(t, prob=T, sub='Distribution of mutation rate', breaks=s,
-       xlab='Lambda', ylab='', ylim=c(0, max(dg, df)), ...)
-  # try negative binomial and poisson distributions
+       xlab='Lambda', ylab='', ylim=c(0, max(dg, h$density)), ...)
   # parameterized on the means
-  lines(r[1]:r[2], dg, col='black', type='b')
-  #lines(r[1]:r[2], dp, col='red', type='b')
-  #lines(r[1]:r[2], dg, col='blue', type='b')
-  points(round(qgamma(0.95, mean(t), 1), 0), 0, pch=20, col='red')
+  lines(h$mids, dg, col='black', type='b')
+  points(qgamma(0.95, mean(t), 1), 0, pch=20, col='red')
   legend('topright', legend =c('Gamma'), fill = c('black'))
   ## plot the lamda rates greater than cutoff
   ## NOTE: a possible error may need correcting, if there are no values over 0.95
@@ -82,25 +75,23 @@ plot.diagnostics = function(mDat, ...){
       ind = which(cut.pts >= i)
       t = lambda[ind]
       r = range(t)
-      s = seq(floor(r[1])-0.5, ceiling(r[2])+0.5, by=1)
-      r[1] = floor(r[1])
-      r[2] = ceiling(r[2])
-      dg = dgamma(r[1]:r[2], mean(t), 1)
-      df = table(round(t))
-      df = df/sum(df)
-      # which distribution can approximate the frequency of reactome terms
+      s = seq(max(0.5, floor(r[1]))-0.5, ceiling(r[2])+0.5, by=1)
+      # calculate the mid points for histogram/discrete distribution
+      h = hist(t, breaks=s, plot=F)
+      dg = dgamma(h$mids, mean(t), 1)
+      # which distribution can approximate the frequency
       hist(t, prob=T, sub=paste('Distribution of mutation rate at', i), breaks=s,
-           xlab='Lambda', ylab='', ylim=c(0, max(dg, df)), main='Gamma Mutation Rate')
+           xlab='Lambda', ylab='', ylim=c(0, max(dg, h$density)), main='Gamma Mutation Rate')
       # parameterized on the means
-      lines(r[1]:r[2], dg, col='black', type='b')
-      points(round(qgamma(0.95, mean(t), beta), 0), 0, pch=20, col='red')
+      lines(h$mids, dg, col='black', type='b')
+      points(qgamma(0.95, mean(t), 1), 0, pch=20, col='red')
       legend('topright', legend =c('Gamma'), fill = c('black'))
     }
   }
   plot.lambda.cutoffs(mDat[,'lambda.other'], cut.pts = cut.pts)
 }
 
-getSignificantPositions = function(mDat, p.adj.cut=0.05, add=F, ...){
+getSignificantPositions = function(mDat, p.cut=0.01, add=F, ...){
   mDat = na.omit(mDat)
   mDat = mDat[mDat[,'var.q'] != 3, ]
   # remove first quantile of theta
@@ -111,7 +102,7 @@ getSignificantPositions = function(mDat, p.adj.cut=0.05, add=F, ...){
   p.val = pgamma(mDat[,'lambda.other'], shape = mean(mDat[,'lambda.other']), 1, lower.tail = F)
   p.adj = p.adjust(p.val, 'BH')
   mDat = cbind(mDat, p.val, p.adj)
-  i = which(mDat[,'p.adj'] < p.adj.cut)
+  i = which(mDat[,'p.val'] < p.cut)
   l = as.numeric(rownames(mDat)[nrow(mDat)])
   x = rep(0, times = l)
   rn = as.numeric(rownames(mDat)[i])
@@ -120,7 +111,7 @@ getSignificantPositions = function(mDat, p.adj.cut=0.05, add=F, ...){
   if (!add && length(i) > 0) {
     plot(x, pch=20, cex=0.5, sub='Significant Mutation Rate ~ Gamma(lambda)', ylab='Lambda', xlab='Sequence', 
          ylim=c(min(x[rn]-1), max(x[rn])),  ...)
-  } else {
+  } else if (add && length(i) > 0) {
     points(x, pch=20, cex=0.5, ...)
   }
   return(mDat[i,])
@@ -176,7 +167,7 @@ csvSamples = gsub('Data_external/Sam//(\\w+)\\.bam', '\\1', csBamfiles)
 names(lMutation) = csvSamples
 
 lapply(names(lMutation), function(x) plot.diagnostics(lMutation[[x]], main=x))
-lSignificant = lapply(names(lMutation), function(x) getSignificantPositions(lMutation[[x]], p.adj.cut = 0.05, main=x))
+lSignificant = lapply(names(lMutation), function(x) getSignificantPositions(lMutation[[x]], main=x))
 
 ## all the samples in one matrix together
 mAllMutants.sig = matrix(0, nrow=width(refseq), ncol=length(csvSamples), dimnames=list(1:width(refseq), csvSamples))
