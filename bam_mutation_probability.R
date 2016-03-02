@@ -60,13 +60,15 @@ plot.diagnostics = function(mDat, ...){
   ## NOTE: a possible error may need correcting, if there are no values over 0.95
   c = qgamma(0.95, mean(t), 1)
   i = which(mDat[,'lambda.other'] > c)
-  # get limit of vector from the row names of mDat
-  l = as.numeric(rownames(mDat)[nrow(mDat)])
-  x = rep(0, times = l)
-  rn = as.numeric(rownames(mDat)[i])
-  x[rn] = mDat[i,'lambda.other']
-  plot(x, pch=20, cex=0.5, sub='Significant Mutation Rate ~ Gamma(lambda)', ylab='Lambda', xlab='Sequence', 
-      ylim=c(min(x[rn]-1), max(x[rn])),  ...)
+  # get limit of vector from the row names of mDat, only if any significant positions
+  if (length(i) > 0) {
+    l = as.numeric(rownames(mDat)[nrow(mDat)])
+    x = rep(0, times = l)
+    rn = as.numeric(rownames(mDat)[i])
+    x[rn] = mDat[i,'lambda.other']
+    plot(x, pch=20, cex=0.5, sub='Significant Mutation Rate ~ Gamma(lambda)', ylab='Lambda', xlab='Sequence', 
+         ylim=c(min(x[rn]-1), max(x[rn])),  ...)
+  } # end if
   ## plot all the rates at different cutoffs of the theta
   mDat = mDat[,c('theta', 'lambda.other')]
   cut.pts = cut(mDat[,1], breaks = quantile(mDat[,1], 0:10/10), include.lowest = T, labels = c(1:10))
@@ -136,7 +138,8 @@ f_getMutations = function(csBamfile, oDSRef){
   # process chunks at a time
   # oGRbam.bin = f_split_GRanges_by_length(oGRbam, 1000)
   oPile = pileup(csBamfile, #scanBamParam = ScanBamParam(which = oGRbam), 
-                 pileupParam = PileupParam(distinguish_strands = F, max_depth = 1000))
+                 pileupParam = PileupParam(distinguish_strands = F, max_depth = 1000, min_base_quality = 30, 
+                                           min_mapq = 30))
   # get the sequence
   seq = f_getSeq(oPile)
   # adjust the reference sequence size to the aligned pileup data
