@@ -167,8 +167,9 @@ csvSamples = gsub('Data_external/Sam//(\\w+)\\.bam', '\\1', csBamfiles)
 names(lMutation) = csvSamples
 
 lapply(names(lMutation), function(x) plot.diagnostics(lMutation[[x]], main=x))
-lSignificant = lapply(names(lMutation), function(x) getSignificantPositions(lMutation[[x]], main=x))
-
+lSignificant = lapply(names(lMutation), function(x) getSignificantPositions(lMutation[[x]], main=x, p.cut = 0.05))
+names(lSignificant) = csvSamples
+endoapply(lSignificant, dim)
 ## all the samples in one matrix together
 mAllMutants.sig = matrix(0, nrow=width(refseq), ncol=length(csvSamples), dimnames=list(1:width(refseq), csvSamples))
 
@@ -190,25 +191,27 @@ for(i in 1:ncol(mAllMutants)){
 }
 
 ## various plots 
-matplot(mAllMutants.sig, type='p', pch=20, cex=0.5, main='position of significant residues', col=1:ncol(mAllMutants))
-legend('bottomright', legend = colnames(mAllMutants), fill=1:ncol(mAllMutants))
+c = rainbow(ncol(mAllMutants.sig))
+matplot(mAllMutants.sig, type='p', pch=20, cex=0.5, main='position of significant residues', col=c, ylim=c(1, max(mAllMutants.sig)))
+plot.new()
+legend('center', legend = colnames(mAllMutants.sig), fill=c)
+colnames(mAllMutants) = gsub('(G\\d*).+', '\\1', colnames(mAllMutants))
+boxplot(mAllMutants, main='All Mutation Rates', las=2, cex=0.5, ylim=c(0, 15))
 
 # density of gamma rates
 sapply(colnames(mAllMutants), function(n) {
   t = na.omit(mAllMutants[,n])
   r = range(t)
-  s = seq(floor(r[1])-0.5, ceiling(r[2])+0.5, by=1)
-  r[1] = floor(r[1])
-  r[2] = ceiling(r[2])
-  dg = dgamma(r[1]:r[2], mean(t), 1)
-  df = table(round(t))
-  df = df/sum(df)
+  s = seq(max(0.5, floor(r[1]))-0.5, ceiling(r[2])+0.5, by=1)
+  # calculate the mid points for histogram/discrete distribution
+  h = hist(t, breaks=s, plot=F)
+  dg = dgamma(h$mids, mean(t), 1)
   # which distribution can approximate the frequency
   hist(t, prob=T, sub='Distribution of mutation rate', breaks=s,
-       xlab='Lambda', ylab='', ylim=c(0, max(dg, df)), main=paste(n, 'Gamma Mutation Rate'))
+       xlab='Lambda', ylab='', ylim=c(0, max(dg, h$density)), main=paste(n, 'Gamma Mutation Rate'))
   # parameterized on the means
-  lines(r[1]:r[2], dg, col='black', type='b')
-  points(round(qgamma(0.95, mean(t), 1), 0), 0, pch=20, col='red')
+  lines(h$mids, dg, col='black', type='b')
+  points(qgamma(0.95, mean(t), 1), 0, pch=20, col='red')
   legend('topright', legend =c('Gamma'), fill = c('black'))
   })
 
@@ -229,17 +232,51 @@ mAllMutants.pool = cbind(ivDrug, ivWild, ivCont)
 sapply(colnames(mAllMutants.pool), function(n) {
   t = na.omit(mAllMutants.pool[,n])
   r = range(t)
-  s = seq(floor(r[1])-0.5, ceiling(r[2])+0.5, by=1)
-  r[1] = floor(r[1])
-  r[2] = ceiling(r[2])
-  dg = dgamma(r[1]:r[2], mean(t), 1)
-  df = table(round(t))
-  df = df/sum(df)
-  # which distribution can approximate the frequency of reactome terms
+  s = seq(max(0.5, floor(r[1]))-0.5, ceiling(r[2])+0.5, by=1)
+  # calculate the mid points for histogram/discrete distribution
+  h = hist(t, breaks=s, plot=F)
+  dg = dgamma(h$mids, mean(t), 1)
+  # which distribution can approximate the frequency
   hist(t, prob=T, sub='Distribution of mutation rate', breaks=s,
-       xlab='Lambda', ylab='', ylim=c(0, max(dg, df)), main=paste(n, 'Gamma Mutation Rate'))
+       xlab='Lambda', ylab='', ylim=c(0, max(dg, h$density)), main=paste(n, 'Gamma Mutation Rate'))
   # parameterized on the means
-  lines(r[1]:r[2], dg, col='black', type='b')
-  points(round(qgamma(0.95, mean(t), 1), 0), 0, pch=20, col='red')
+  lines(h$mids, dg, col='black', type='b')
+  points(qgamma(0.95, mean(t), 1), 0, pch=20, col='red')
+  legend('topright', legend =c('Gamma'), fill = c('black'))
+})
+
+
+fSamples = factor(c('Exp1.D', 'Exp1.D', 'Exp1.C', 
+                    'Wild', 'Exp2.D', 'Exp2.D', 'Exp2.C', 'Exp2.D', 'Exp2.C'))
+
+mAllMutants.pool = na.omit(mAllMutants)
+
+colnames(mAllMutants.pool) = fSamples
+
+boxplot(mAllMutants.pool)
+
+ivExp1.D = rowMeans(mAllMutants.pool[,fSamples == 'Exp1.D'])
+ivExp1.C = mAllMutants.pool[,'Exp1.C']
+ivWild = (mAllMutants.pool[,'Wild'])
+ivExp2.D = rowMeans(mAllMutants.pool[,fSamples == 'Exp2.D'])
+ivExp2.C = rowMeans(mAllMutants.pool[,fSamples == 'Exp2.C'])
+
+mAllMutants.pool = cbind(ivExp1.D, ivExp1.C, ivWild, ivExp2.D, ivExp2.C)
+boxplot(mAllMutants.pool)
+round(cor(mAllMutants.pool), 2)
+# density of gamma rates
+sapply(colnames(mAllMutants.pool), function(n) {
+  t = na.omit(mAllMutants.pool[,n])
+  r = range(t)
+  s = seq(max(0.5, floor(r[1]))-0.5, ceiling(r[2])+0.5, by=1)
+  # calculate the mid points for histogram/discrete distribution
+  h = hist(t, breaks=s, plot=F)
+  dg = dgamma(h$mids, mean(t), 1)
+  # which distribution can approximate the frequency
+  hist(t, prob=T, sub='Distribution of mutation rate', breaks=s,
+       xlab='Lambda', ylab='', ylim=c(0, max(dg, h$density)), main=paste(n, 'Gamma Mutation Rate'))
+  # parameterized on the means
+  lines(h$mids, dg, col='black', type='b')
+  points(qgamma(0.95, mean(t), 1), 0, pch=20, col='red')
   legend('topright', legend =c('Gamma'), fill = c('black'))
 })
