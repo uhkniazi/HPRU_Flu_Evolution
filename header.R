@@ -97,15 +97,19 @@ getSequenceParameters = function(ivSeq, cRefBase, prior=c(A=1/2, T=1/2, G=1/2, C
   # posterior gamma, a component of the dirichlet distribution
   ## see gelman P 583 and bayesian computations with R page 66
   getPosteriorGamma = function(alpha.scale, base, n=1000, prior){
-    # adjust alpha by removing prior
+    # adjust alpha by removing dirichlet prior
     alpha.scale = alpha.scale - prior
     i = which(names(alpha.scale) == base)
     alpha.new = c(alpha.scale[i], sum(alpha.scale[-i]))
     names(alpha.new) = c('Base', 'Other')
     ## set a non-informative jeffery's prior for gamma distributed rate
     jef.prior = c(alpha=0.5, beta=1)
+    # adjust the new alpha for gamma posterior
+    alpha.new = alpha.new + jef.prior['alpha']
+    # convert the alpha to rate per 1000
+    alpha.new = (alpha.new/sum(alpha.new)) * 1000
     rg = sapply(seq_along(alpha.new), function(x) {
-      return(rgamma(n, alpha.new[x]+jef.prior['alpha'], jef.prior['beta']))
+      return(rgamma(n, alpha.new[x], jef.prior['beta']))
     })
     colnames(rg) = names(alpha.new)
     return(rg)

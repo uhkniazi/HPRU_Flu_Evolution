@@ -169,7 +169,8 @@ names(lMutation) = csvSamples
 lapply(names(lMutation), function(x) plot.diagnostics(lMutation[[x]], main=x))
 lSignificant = lapply(names(lMutation), function(x) getSignificantPositions(lMutation[[x]], main=x, p.cut = 0.05))
 names(lSignificant) = csvSamples
-endoapply(lSignificant, dim)
+dfMutants = data.frame(Signif.Positions= do.call(rbind, endoapply(lSignificant, dim))[,-2])
+
 ## all the samples in one matrix together
 mAllMutants.sig = matrix(0, nrow=width(refseq), ncol=length(csvSamples), dimnames=list(1:width(refseq), csvSamples))
 
