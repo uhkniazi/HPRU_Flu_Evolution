@@ -13,6 +13,7 @@ refseq = readDNAStringSet('Data_external/Reference_seq/Eng 195 concatenated by D
 ########## functions used in the script
 
 plot.diagnostics = function(mDat, ...){
+  if (!require(scatterplot3d)) stop('scatterplot3d library required')
   # remove the last quantile of the variance
   mDat = na.omit(mDat)
   mDat = mDat[mDat[,'var.q'] != 3, ]
@@ -35,6 +36,9 @@ plot.diagnostics = function(mDat, ...){
        sub='Reference Base Rate ~ Gamma(lambda)', ylab='Theta', xlab='Lambda', ...)
   plot(mDat[,'lambda.base'], mDat[,'lambda.other'], pch=20, cex=0.5,
        sub='Ref rate vs Mutation rate', ylab='Lambda Mutation', xlab='Lambda Base', ...)
+  # plot the variance, theta and mutation rate
+  scatterplot3d(x=mDat[,'lambda.other'], z=logit(mDat[,'theta']), y=mDat[,'var'], pch=16, cex.symbols=0.5, scale.y=1, highlight.3d=T,
+                angle=60, sub='Mutation Rate vs Theta and Variance', zlab='Logit Theta', xlab='Lambda', ylab='Variance', ... )
   ## plot the density and fit distribution, for mutation rate
   t = mDat[,'lambda.other']
   r = range(t)
@@ -166,7 +170,7 @@ lMutation = lapply(csBamfiles, f_getMutations, refseq)
 csvSamples = gsub('Data_external/Sam//(\\w+)\\.bam', '\\1', csBamfiles)
 names(lMutation) = csvSamples
 
-lapply(names(lMutation), function(x) plot.diagnostics(lMutation[[x]], main=x))
+temp = lapply(names(lMutation), function(x) plot.diagnostics(lMutation[[x]], main=x))
 lSignificant = lapply(names(lMutation), function(x) getSignificantPositions(lMutation[[x]], main=x, p.cut = 0.05))
 names(lSignificant) = csvSamples
 dfMutants = data.frame(Signif.Positions= do.call(rbind, endoapply(lSignificant, dim))[,-2])
