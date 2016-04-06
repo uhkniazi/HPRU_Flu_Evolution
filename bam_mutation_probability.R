@@ -150,9 +150,9 @@ f_getMutations = function(csBamfile, oDSRef){
   # create factors for quantiles
   param = na.omit(param)
   var.q = cut(param[,'var'],breaks = quantile(param[,'var'], c(0, 0.05, 0.95, 1)), include.lowest = T, 
-                  labels = c('q5.low', 'q90', 'q5.high'))
-  theta.q = cut(param[,'theta'],breaks = quantile(param[,'theta'], c(0, 0.05, 0.95, 1)), include.lowest = T, 
-                    labels = c('q5.low', 'q90', 'q5.high'))
+                  labels = c('q.low', 'q,m', 'q.high'))
+  theta.q = cut(param[,'theta'],breaks = quantile(param[,'theta'], c(0, 0.01, 0.95, 1)), include.lowest = T, 
+                    labels = c('q.low', 'q.m', 'q.high'))
   param = cbind(param, var.q, theta.q)
   #return(t(param))
   ## reformat the data matrix 
