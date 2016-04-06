@@ -1,3 +1,25 @@
+lt = lapply(lSignificant, function(x) {
+  m = getTransitionMatrix(t(x[,c('A', 'T', 'G', 'C')]))
+  m = round(m/sum(rowSums(m)), 2)
+})
+  
+
+
+
+mBase = lSignificant[[1]][,c('A', 'T', 'G', 'C')]
+
+mBase = temp[,c('A', 'T', 'G', 'C')]
+mBase = t(mBase)
+
+mTrans = matrix(0, 4, 4, dimnames = list(c('A', 'T', 'G', 'C'), c('A', 'T', 'G', 'C')))
+
+temp = sort(mBase[,1], decreasing = T)
+temp = mBase[,1]
+i = names(which.max(temp))
+mTrans[i,] = mTrans[i,] + temp
+
+
+
 mDat = lMutation[[1]]
 mDat = na.omit(mDat)
 mDat = mDat[mDat[,'var.q'] != 3, ]

@@ -135,4 +135,15 @@ getSequenceParameters = function(ivSeq, cRefBase, prior=c(A=1/2, T=1/2, G=1/2, C
 logit = function(p) log(p/(1-p))
 logit.inv = function(p) {exp(p)/(exp(p)+1) }
 
-
+getTransitionMatrix = function(mBase){
+  # matrix to hold results
+  mTrans = matrix(0, 4, 4, dimnames = list(c('A', 'T', 'G', 'C'), c('A', 'T', 'G', 'C')))
+  for (i in 1:ncol(mBase)) {
+    x = mBase[,i]
+    m = names(which.max(x))
+    x = ifelse(x == 0, 0, 1)
+    mTrans[m,] = mTrans[m,] + x
+  }
+  diag(mTrans) = 0
+  return(mTrans)
+}
