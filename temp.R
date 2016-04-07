@@ -1,3 +1,11 @@
+
+vMatch = matchPattern('NNN', refseq[[1]])
+
+
+
+
+
+
 lt = lapply(lSignificant, function(x) {
   m = getTransitionMatrix(t(x[,c('A', 'T', 'G', 'C')]))
   m = round(m/sum(rowSums(m)), 2)
