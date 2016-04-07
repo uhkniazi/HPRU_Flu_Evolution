@@ -9,6 +9,9 @@ source('header.R')
 library(GenomicAlignments)
 
 refseq = readDNAStringSet('Data_external/Reference_seq/Eng 195 concatenated by Daniel.fasta')
+# load the sequence annotation object
+load('Objects/lAnnotation.rds')
+
 
 ########## functions used in the script
 
@@ -171,17 +174,97 @@ csvSamples = gsub('Data_external/Sam//(\\w+)\\.bam', '\\1', csBamfiles)
 names(lMutation) = csvSamples
 
 temp = lapply(names(lMutation), function(x) plot.diagnostics(lMutation[[x]], main=x))
-lSignificant = lapply(names(lMutation), function(x) getSignificantPositions(lMutation[[x]], main=x, p.cut = 0.05))
+lSignificant = lapply(names(lMutation), function(x) getSignificantPositions(lMutation[[x]], main=x, p.cut = 0.01))
 names(lSignificant) = csvSamples
 dfMutants = data.frame(Signif.Positions= do.call(rbind, endoapply(lSignificant, dim))[,-2])
+# get only those samples with significant positions
+dfMutants.sig = data.frame(Signif.Positions= dfMutants[dfMutants$Signif.Positions != 0,])
+i = which(dfMutants$Signif.Positions != 0)
+rownames(dfMutants.sig) = rownames(dfMutants)[i] 
 
-## all the samples in one matrix together
-mAllMutants.sig = matrix(0, nrow=width(refseq), ncol=length(csvSamples), dimnames=list(1:width(refseq), csvSamples))
-
+## all the significant samples in one matrix together
+mAllMutants.sig = matrix(0, nrow=width(refseq), ncol=nrow(dfMutants.sig), 
+                         dimnames=list(1:width(refseq), rownames(dfMutants.sig)))
+nm = colnames(mAllMutants.sig)
 for(i in 1:ncol(mAllMutants.sig)){
-  m = match(rownames(lSignificant[[i]]), rownames(mAllMutants.sig))
-  mAllMutants.sig[m,i] = lSignificant[[i]][,'lambda.other']
+  m = match(rownames(lSignificant[[nm[i]]]), rownames(mAllMutants.sig))
+  mAllMutants.sig[m,i] = lSignificant[[nm[i]]][,'lambda.other']
 }
+
+# assign protein ids to positions
+cvProteins = lAnnotation$ranges$ID
+fProteins = rep(NA, length=nrow(mAllMutants.sig))
+s = start(ranges(lAnnotation$ranges))
+e = end(ranges(lAnnotation$ranges))
+for (i in seq_along(s)){
+  fProteins[s[i]:e[i]] = cvProteins[i]
+}
+
+dfAllMutants.sig = data.frame(mAllMutants.sig, protein=fProteins)
+# remove positions with NNN
+dfAllMutants.sig = na.omit(dfAllMutants.sig)
+fProteins = factor(dfAllMutants.sig$protein, levels = cvProteins)
+dfAllMutants.sig$protein = fProteins
+
+#### make plots for all the experiments 
+## experiment 1
+dfExp1 = data.frame(S100=dfAllMutants.sig$G11_q10_sort, S10=dfAllMutants.sig$G12_q10_sort, #S0=dfAllMutants.sig$G13_q10_sort,
+                    protein=dfAllMutants.sig$protein)
+rownames(dfExp1) = rownames(dfAllMutants.sig)
+
+mExp1 = NULL
+for(i in 1:2){
+  m = dfExp1[,i]
+  names(m) = rownames(dfExp1)
+  p = dfExp1[,'protein']
+  # remove 0s
+  f = which(m == 0)
+  m = m[-f]
+  p = p[-f]
+  # calculate lengths, i.e number of mutations
+  mut.no = tapply(m, p, length)
+  # normalize by dividing by length of the protein
+  lp = as.numeric(table(dfExp1[,'protein']))
+  mut.nor = mut.no/lp
+  mExp1 = cbind(mExp1, mut.nor)
+}
+colnames(mExp1) = colnames(dfExp1)[1:2]
+c = rainbow(nrow(mExp1))
+barplot(mExp1, col=c, beside=T)
+legend('topright', legend = rownames(mExp1), fill=c)
+
+## experiment 2
+dfExp2 = data.frame(G15=dfAllMutants.sig$G15_q10_sort, G16=dfAllMutants.sig$G16_q10_sort, G18=dfAllMutants.sig$G18_q10_sort,
+                    protein=dfAllMutants.sig$protein)
+rownames(dfExp2) = rownames(dfAllMutants.sig)
+
+mExp2 = NULL
+for(i in 1:3){
+  m = dfExp2[,i]
+  names(m) = rownames(dfExp2)
+  p = dfExp2[,'protein']
+  # remove 0s
+  f = which(m == 0)
+  m = m[-f]
+  p = p[-f]
+  # calculate lengths, i.e number of mutations
+  mut.no = tapply(m, p, length)
+  # normalize by dividing by length of the protein
+  lp = as.numeric(table(dfExp2[,'protein']))
+  mut.nor = mut.no/lp
+  mExp2 = cbind(mExp2, mut.nor)
+}
+colnames(mExp2) = colnames(dfExp2)[1:3]
+c = rainbow(nrow(mExp2))
+barplot(mExp2, col=c, beside=T)
+legend('topright', legend = rownames(mExp2), fill=c)
+
+## plot both experiments together
+mExp.join = cbind(mExp1, mExp2)
+c = rainbow(nrow(mExp.join))
+barplot(mExp.join, col=c, beside=T)
+legend('topleft', legend = rownames(mExp.join), fill=c)
+
 
 mAllMutants = matrix(NA, nrow=width(refseq), ncol=length(csvSamples), dimnames=list(1:width(refseq), csvSamples))
 
