@@ -174,9 +174,14 @@ csvSamples = gsub('Data_external/Sam//(\\w+)\\.bam', '\\1', csBamfiles)
 names(lMutation) = csvSamples
 
 temp = lapply(names(lMutation), function(x) plot.diagnostics(lMutation[[x]], main=x))
-lSignificant = lapply(names(lMutation), function(x) getSignificantPositions(lMutation[[x]], main=x, p.cut = 0.01))
+
+## get the positions in the sequence with 
+## significant rates
+lSignificant = lapply(names(lMutation), function(x) getSignificantPositions(lMutation[[x]], main=x, p.cut = 0.05))
 names(lSignificant) = csvSamples
+sapply(lSignificant, dim)
 dfMutants = data.frame(Signif.Positions= do.call(rbind, endoapply(lSignificant, dim))[,-2])
+
 # get only those samples with significant positions
 dfMutants.sig = data.frame(Signif.Positions= dfMutants[dfMutants$Signif.Positions != 0,])
 i = which(dfMutants$Signif.Positions != 0)
@@ -206,29 +211,64 @@ dfAllMutants.sig = na.omit(dfAllMutants.sig)
 fProteins = factor(dfAllMutants.sig$protein, levels = cvProteins)
 dfAllMutants.sig$protein = fProteins
 
+## use the parent i.e. g14 to calculate a prior distribution
+lPriors = tapply(dfAllMutants.sig$G14_q10_sort, dfAllMutants.sig$protein, function(x) {
+  # convert the positions with mutation and no mutation to a 
+  # binomial variable
+  x = ifelse(x > 0, 1, 0)
+  # calculate binomial parameters
+  n = length(x)
+  s = sum(x)
+  f = n-s
+  # get the alpha and beta parameters for the beta prior
+  return(c(alpha=s, beta=f))
+})
+
+
+
 #### make plots for all the experiments 
 ## experiment 1
-dfExp1 = data.frame(S100=dfAllMutants.sig$G11_q10_sort, S10=dfAllMutants.sig$G12_q10_sort, #S0=dfAllMutants.sig$G13_q10_sort,
+dfExp1 = data.frame(S100=dfAllMutants.sig$G11_q10_sort, S10=dfAllMutants.sig$G12_q10_sort, S0=dfAllMutants.sig$G13_q10_sort,
                     protein=dfAllMutants.sig$protein)
 rownames(dfExp1) = rownames(dfAllMutants.sig)
 
 mExp1 = NULL
-for(i in 1:2){
+for(i in 1:3){
+  # read vector for protein i
   m = dfExp1[,i]
   names(m) = rownames(dfExp1)
   p = dfExp1[,'protein']
-  # remove 0s
-  f = which(m == 0)
-  m = m[-f]
-  p = p[-f]
-  # calculate lengths, i.e number of mutations
-  mut.no = tapply(m, p, length)
-  # normalize by dividing by length of the protein
-  lp = as.numeric(table(dfExp1[,'protein']))
-  mut.nor = mut.no/lp
-  mExp1 = cbind(mExp1, mut.nor)
+  # convert to binomial 1 0 variable
+  m = ifelse(m > 0, 1, 0)
+  # calculate the posterior theta for each protein
+  ivPost = rep(NA, length=nlevels(p))
+  names(ivPost) = levels(p)
+  lev = levels(p)
+  for (inner in 1:nlevels(p)){
+    # get subvector for the current protein 
+    m.sub = m[p == lev[inner]]
+    # calculate posterior 
+    trials = length(m.sub)
+    suc = sum(m.sub)
+    fail = trials - suc
+    # get prior alpha beta
+    pr = lPriors[[lev[inner]]]
+    po = rbeta(1000, suc+pr['alpha'], fail+pr['beta'])
+    #po = rbeta(1000, suc+1, fail+1)
+    ivPost[lev[inner]] = mean(po)
+  }
+  mExp1 = cbind(mExp1, ivPost)
+#   f = which(m == 0)
+#   m = m[-f]
+#   p = p[-f]
+#   # calculate lengths, i.e number of mutations
+#   mut.no = tapply(m, p, length)
+#   # normalize by dividing by length of the protein
+#   lp = as.numeric(table(dfExp1[,'protein']))
+#   mut.nor = mut.no/lp
+#   mExp1 = cbind(mExp1, mut.nor)
 }
-colnames(mExp1) = colnames(dfExp1)[1:2]
+colnames(mExp1) = colnames(dfExp1)[1:3]
 c = rainbow(nrow(mExp1))
 barplot(mExp1, col=c, beside=T)
 legend('topright', legend = rownames(mExp1), fill=c)
