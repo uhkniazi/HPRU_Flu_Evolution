@@ -147,3 +147,11 @@ getTransitionMatrix = function(mBase){
   diag(mTrans) = 0
   return(mTrans)
 }
+
+
+getalphabeta = function(m, v){
+  al.be = (m * (1-m) / v) - 1
+  al = al.be * m
+  be = al.be * (1-m)
+  return(list(alpha=al, beta=be))
+}
