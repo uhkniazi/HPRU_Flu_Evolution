@@ -211,22 +211,141 @@ dfAllMutants.sig = na.omit(dfAllMutants.sig)
 fProteins = factor(dfAllMutants.sig$protein, levels = cvProteins)
 dfAllMutants.sig$protein = fProteins
 
-## use the parent i.e. g14 to calculate a prior distribution
-lPriors = tapply(dfAllMutants.sig$G14_q10_sort, dfAllMutants.sig$protein, function(x) {
+## calculate theta for each protein in sample
+f_getTheta = function(x, prot){
   # convert the positions with mutation and no mutation to a 
   # binomial variable
   x = ifelse(x > 0, 1, 0)
-  # calculate binomial parameters
-  n = length(x)
-  s = sum(x)
-  f = n-s
-  # get the alpha and beta parameters for the beta prior
-  return(c(alpha=s, beta=f))
+  ret = tapply(x, prot, function(y){
+    # calculate binomial parameters
+    n = length(y)
+    return(round(sum(y)/n, 3))
+  })
+  return(unlist(ret))
+}
+
+## use the parent i.e. g14 to calculate a prior distribution
+# lPriors = tapply(dfAllMutants.sig$G14_q10_sort, dfAllMutants.sig$protein, function(x) {
+#   # convert the positions with mutation and no mutation to a 
+#   # binomial variable
+#   x = ifelse(x > 0, 1, 0)
+#   # calculate binomial parameters
+#   n = length(x)
+#   s = sum(x)
+#   f = n-s
+#   # get the alpha and beta parameters for the beta prior
+#   return(c(alpha=s, beta=f))
+# })
+
+## use g14, 13, 17 and 19 to calculate prior
+g13 = f_getTheta(dfAllMutants.sig$G13_q10_sort, dfAllMutants.sig$protein)
+g14 = f_getTheta(dfAllMutants.sig$G14_q10_sort, dfAllMutants.sig$protein)
+g17 = f_getTheta(dfAllMutants.sig$G17_q10_sort, dfAllMutants.sig$protein)
+g19 = f_getTheta(dfAllMutants.sig$G19_q10_sort, dfAllMutants.sig$protein)
+
+mPrior = cbind(g13, g14, g17, g19)
+
+mPriors = apply(mPrior, 1, function(x) unlist(getalphabeta(mean(x), var(x))))
+
+#### make plots for all the experiments 
+dfExp = data.frame(S100=dfAllMutants.sig$G11_q10_sort, S10=dfAllMutants.sig$G12_q10_sort, S0=dfAllMutants.sig$G13_q10_sort,
+                    protein=dfAllMutants.sig$protein)
+dfExp1 = dfAllMutants.sig
+rownames(dfExp1) = rownames(dfAllMutants.sig)
+
+mExp1 = NULL
+for(i in 1:9){
+  # read vector for protein i
+  m = dfExp1[,i]
+  names(m) = rownames(dfExp1)
+  p = dfExp1[,'protein']
+  # convert to binomial 1 0 variable
+  m = ifelse(m > 0, 1, 0)
+  # calculate the posterior theta for each protein
+  ivPost = rep(NA, length=nlevels(p))
+  names(ivPost) = levels(p)
+  lev = levels(p)
+  for (inner in 1:nlevels(p)){
+    # get subvector for the current protein 
+    m.sub = m[p == lev[inner]]
+    # calculate posterior 
+    trials = length(m.sub)
+    suc = sum(m.sub)
+    fail = trials - suc
+    # get prior alpha beta
+    #pr = lPriors[[lev[inner]]]
+    pr = mPriors[,lev[inner]]
+    po = rbeta(1000, suc+pr['alpha'], fail+pr['beta'])
+    #po = rbeta(1000, suc+1, fail+1)
+    ivPost[lev[inner]] = mean(po)
+  }
+  mExp1 = cbind(mExp1, ivPost)
+  #   f = which(m == 0)
+  #   m = m[-f]
+  #   p = p[-f]
+  #   # calculate lengths, i.e number of mutations
+  #   mut.no = tapply(m, p, length)
+  #   # normalize by dividing by length of the protein
+  #   lp = as.numeric(table(dfExp1[,'protein']))
+  #   mut.nor = mut.no/lp
+  #   mExp1 = cbind(mExp1, mut.nor)
+}
+#colnames(mExp1) = colnames(dfExp1)[1:9]
+cn = c('S100', 'S10', 'S0', 'W', 'P15', 'P16', 'P0', 'P18', 'P0')
+colnames(mExp1) = cn
+c = rainbow(nrow(mExp1))
+barplot(mExp1, col=c, beside=T, las=2)
+legend('topright', legend = rownames(mExp1), fill=c)
+
+mExp1 = t(mExp1)
+c = rainbow(nrow(mExp1))
+barplot(mExp1, col=c, beside=T, las=2)
+legend('topleft', legend = rownames(mExp1), fill=c)
+
+# create a factor for samples to order the data
+fSamples = c('100', '10', '0', '0', '5', '5', '0', '5', '0')
+rownames(mExp1) = fSamples
+fSamples = factor(fSamples)
+
+mExp1 = t(mExp1)
+
+# plot the single passage experiment
+mExp1.single = mExp1[,order(fSamples)]
+mExp1.single = mExp1.single[,colnames(mExp1.single) %in% c('0', '10', '100')]
+mExp1.single = t(mExp1.single)
+
+# convert to a rate
+mExp1.single = round(mExp1.single * 1000, 2)
+c = rainbow(ncol(mExp1.single))
+matplot(mExp1.single, type='b', pch=20, lty=1, xaxt='n', xlab='Dose Micromole', ylab='Mutation Rate', 
+        main='Dose dependent mutation rate', col=c)
+axis(1, at = 1:nrow(mExp1.single), labels = rownames(mExp1.single))
+legend('topleft', legend = colnames(mExp1.single), fill=c)
+
+# plot the multiple passage
+mExp1.mul = mExp1[,order(fSamples)]
+mExp1.mul = mExp1.mul[,colnames(mExp1.mul) %in% c('0', '5')]
+mExp1.mul = t(mExp1.mul)
+
+# convert to a rate
+mExp1.mul = round(mExp1.mul * 1000, 2)
+c = rainbow(ncol(mExp1.mul))
+matplot(mExp1.mul, type='b', pch=20, lty=1, xaxt='n', xlab='Dose Micromole', ylab='Mutation Rate', 
+        main='Multiple passage mutation rate', col=c)
+axis(1, at = 1:nrow(mExp1.mul), labels = rownames(mExp1.mul))
+legend('topleft', legend = colnames(mExp1.mul), fill=c)
+
+######### calculate transition matrices
+lt = lapply(lSignificant, function(x) {
+  m = getTransitionMatrix(t(x[,c('A', 'T', 'G', 'C')]))
+  m = round(m/rowSums(m), 2)
 })
 
 
 
-#### make plots for all the experiments 
+
+############################################### older stuff needs cleanup
+
 ## experiment 1
 dfExp1 = data.frame(S100=dfAllMutants.sig$G11_q10_sort, S10=dfAllMutants.sig$G12_q10_sort, S0=dfAllMutants.sig$G13_q10_sort,
                     protein=dfAllMutants.sig$protein)
@@ -252,7 +371,8 @@ for(i in 1:3){
     suc = sum(m.sub)
     fail = trials - suc
     # get prior alpha beta
-    pr = lPriors[[lev[inner]]]
+    #pr = lPriors[[lev[inner]]]
+    pr = mPriors[,lev[inner]]
     po = rbeta(1000, suc+pr['alpha'], fail+pr['beta'])
     #po = rbeta(1000, suc+1, fail+1)
     ivPost[lev[inner]] = mean(po)
