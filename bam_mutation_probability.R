@@ -315,7 +315,7 @@ mExp1.single = mExp1.single[,colnames(mExp1.single) %in% c('0', '10', '100')]
 mExp1.single = t(mExp1.single)
 
 # convert to a rate
-mExp1.single = round(mExp1.single * 1000, 2)
+mExp1.single = round(mExp1.single * 100, 2)
 c = rainbow(ncol(mExp1.single))
 matplot(mExp1.single, type='b', pch=20, lty=1, xaxt='n', xlab='Dose Micromole', ylab='Mutation Rate', 
         main='Dose dependent mutation rate', col=c)
@@ -328,12 +328,23 @@ mExp1.mul = mExp1.mul[,colnames(mExp1.mul) %in% c('0', '5')]
 mExp1.mul = t(mExp1.mul)
 
 # convert to a rate
-mExp1.mul = round(mExp1.mul * 1000, 2)
+mExp1.mul = round(mExp1.mul * 100, 2)
 c = rainbow(ncol(mExp1.mul))
 matplot(mExp1.mul, type='b', pch=20, lty=1, xaxt='n', xlab='Dose Micromole', ylab='Mutation Rate', 
         main='Multiple passage mutation rate', col=c)
 axis(1, at = 1:nrow(mExp1.mul), labels = rownames(mExp1.mul))
 legend('topleft', legend = colnames(mExp1.mul), fill=c)
+
+## bar plot to make figure from paper
+np = mExp1.single[,'NP']
+np = np[-6]
+
+np0 = mean(np[1:4])
+np10 = np[5]
+mBar = cbind(np0, np10)
+colnames(mBar) = c('0', '10')
+barplot(mBar, ylim=c(0, 7), main='Mutation Rate in NP gene', sub='Doses')
+
 
 ######### calculate transition matrices
 lt = lapply(lSignificant, function(x) {
