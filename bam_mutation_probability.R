@@ -112,18 +112,27 @@ getSignificantPositions = function(mDat, p.cut=0.01, add=F, ...){
   i = which(mDat[,'p.val'] < p.cut)
   l = as.numeric(rownames(mDat)[nrow(mDat)])
   x = rep(0, times = l)
-  # plot the frequencey as well
+  # plot the frequencey and variance as well
   fr = rep(0, times = l)
+  sig2 = rep(0, times = l)
+  # use row names to index the positions as they map to sequence position
   rn = as.numeric(rownames(mDat)[i])
+  # i is the index of the dataframe mapping to corresponding position rn in sequence
   x[rn] = mDat[i,'lambda.other']
-  fr[rn] = round((1-mDat[i,'theta'])*100, 2)
+  fr[as.numeric(rownames(mDat))] = round((1-mDat[,'theta'])*100, 2)
+  sig2[as.numeric(rownames(mDat))] = mDat[,'var']
   # check if no significant genes
   if (!add && length(i) > 0) {
     plot(x, pch=20, cex=0.5, sub='Significant Mutation Rate ~ Gamma(lambda)', ylab='Lambda', xlab='Sequence', 
          ylim=c(min(x[rn]-1), max(x[rn])),  ...)
     # plot the theta - frequency
-    plot(fr, pch=20, cex=0.5, sub='Mutation Frequency', ylab='Frequency', xlab='Sequence',# ...)#, 
-         ylim=c(min(fr[rn]), max(c(fr[rn], 1))),  ...)
+    ## choose colors
+    col.fr = rep(1, length=length(fr))
+    # set red colour for the significant positions
+    col.fr[rn] = 2
+    plot(fr, pch=20, cex=0.5, sub='Mutation Frequency', ylab='Frequency', xlab='Sequence', col=col.fr, ...)#, 
+         #ylim=c(0, max(c(fr[rn], 1))),  ...)
+    plot(sig2, pch=20, cex=0.5, sub='Variance', ylab='Variance', xlab='Sequence', col=col.fr, ...)#, 
   } else if (add && length(i) > 0) {
     points(x, pch=20, cex=0.5, ...)
     points(fr, pch=20, cex=0.5, ...)
