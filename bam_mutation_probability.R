@@ -112,14 +112,21 @@ getSignificantPositions = function(mDat, p.cut=0.01, add=F, ...){
   i = which(mDat[,'p.val'] < p.cut)
   l = as.numeric(rownames(mDat)[nrow(mDat)])
   x = rep(0, times = l)
+  # plot the frequencey as well
+  fr = rep(0, times = l)
   rn = as.numeric(rownames(mDat)[i])
   x[rn] = mDat[i,'lambda.other']
+  fr[rn] = round((1-mDat[i,'theta'])*100, 2)
   # check if no significant genes
   if (!add && length(i) > 0) {
     plot(x, pch=20, cex=0.5, sub='Significant Mutation Rate ~ Gamma(lambda)', ylab='Lambda', xlab='Sequence', 
          ylim=c(min(x[rn]-1), max(x[rn])),  ...)
+    # plot the theta - frequency
+    plot(fr, pch=20, cex=0.5, sub='Mutation Frequency', ylab='Frequency', xlab='Sequence',# ...)#, 
+         ylim=c(min(fr[rn]), max(c(fr[rn], 1))),  ...)
   } else if (add && length(i) > 0) {
     points(x, pch=20, cex=0.5, ...)
+    points(fr, pch=20, cex=0.5, ...)
   }
   return(mDat[i,])
 }
@@ -315,10 +322,10 @@ mExp1.single = mExp1.single[,colnames(mExp1.single) %in% c('0', '10', '100')]
 mExp1.single = t(mExp1.single)
 
 # convert to a rate
-mExp1.single = round(mExp1.single * 100, 2)
+mExp1.single = round(mExp1.single, 2)
 c = rainbow(ncol(mExp1.single))
-matplot(mExp1.single, type='b', pch=20, lty=1, xaxt='n', xlab='Dose Micromole', ylab='Mutation Rate', 
-        main='Dose dependent mutation rate', col=c)
+matplot(mExp1.single, type='b', pch=20, lty=1, xaxt='n', xlab='Dose Micromole', ylab='Theta', 
+        main='Relationship between Dose and Theta for Each Gene', col=c)
 axis(1, at = 1:nrow(mExp1.single), labels = rownames(mExp1.single))
 legend('topleft', legend = colnames(mExp1.single), fill=c)
 
@@ -328,10 +335,10 @@ mExp1.mul = mExp1.mul[,colnames(mExp1.mul) %in% c('0', '5')]
 mExp1.mul = t(mExp1.mul)
 
 # convert to a rate
-mExp1.mul = round(mExp1.mul * 100, 2)
+mExp1.mul = round(mExp1.mul, 2)
 c = rainbow(ncol(mExp1.mul))
-matplot(mExp1.mul, type='b', pch=20, lty=1, xaxt='n', xlab='Dose Micromole', ylab='Mutation Rate', 
-        main='Multiple passage mutation rate', col=c)
+matplot(mExp1.mul, type='b', pch=20, lty=1, xaxt='n', xlab='Dose Micromole', ylab='Theta', 
+        main='Relation between Multiple passages and Theta for Each Gene', col=c)
 axis(1, at = 1:nrow(mExp1.mul), labels = rownames(mExp1.mul))
 legend('topleft', legend = colnames(mExp1.mul), fill=c)
 
@@ -343,7 +350,7 @@ np0 = mean(np[1:4])
 np10 = np[5]
 mBar = cbind(np0, np10)
 colnames(mBar) = c('0', '10')
-barplot(mBar, ylim=c(0, 7), main='Mutation Rate in NP gene', sub='Doses')
+barplot(mBar, ylim=c(0, 0.07), main='Theta for NP gene at 0 and 10 MMole', sub='Doses', ylab='Theta')
 
 
 ######### calculate transition matrices
