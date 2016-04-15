@@ -321,7 +321,7 @@ legend('topleft', legend = rownames(mExp1), fill=c)
 # create a factor for samples to order the data
 fSamples = c('100', '10', '0', '0', '5', '5', '0', '5', '0')
 rownames(mExp1) = fSamples
-fSamples = factor(fSamples)
+fSamples = factor(fSamples, levels = c('0', '5', '10', '100'))
 
 mExp1 = t(mExp1)
 
@@ -331,10 +331,10 @@ mExp1.single = mExp1.single[,colnames(mExp1.single) %in% c('0', '10', '100')]
 mExp1.single = t(mExp1.single)
 
 # convert to a rate
-mExp1.single = round(mExp1.single, 2)
+mExp1.single = round(mExp1.single, 3)
 c = rainbow(ncol(mExp1.single))
 matplot(mExp1.single, type='b', pch=20, lty=1, xaxt='n', xlab='Dose Micromole', ylab='Theta', 
-        main='Relationship between Dose and Theta for Each Gene', col=c)
+        main='Relationship between Dose and Theta for Each Gene', col=c, lwd=2)
 axis(1, at = 1:nrow(mExp1.single), labels = rownames(mExp1.single))
 legend('topleft', legend = colnames(mExp1.single), fill=c)
 
@@ -344,12 +344,34 @@ mExp1.mul = mExp1.mul[,colnames(mExp1.mul) %in% c('0', '5')]
 mExp1.mul = t(mExp1.mul)
 
 # convert to a rate
-mExp1.mul = round(mExp1.mul, 2)
+mExp1.mul = round(mExp1.mul, 3)
 c = rainbow(ncol(mExp1.mul))
 matplot(mExp1.mul, type='b', pch=20, lty=1, xaxt='n', xlab='Dose Micromole', ylab='Theta', 
-        main='Relation between Multiple passages and Theta for Each Gene', col=c)
+        main='Relation between Multiple passages and Theta for Each Gene', col=c, lwd=2)
 axis(1, at = 1:nrow(mExp1.mul), labels = rownames(mExp1.mul))
 legend('topleft', legend = colnames(mExp1.mul), fill=c)
+
+### plot together
+mExp1.all = mExp1[,order(fSamples)]
+mExp1.all = t(mExp1.all)
+# remove one of the odd samples
+mExp1.all = mExp1.all[-7,]
+
+# convert to a rate
+mExp1.all = round(mExp1.all, 3)
+c = rainbow(ncol(mExp1.all))
+matplot(mExp1.all, type='b', pch=20, lty=1, xaxt='n', xlab='Dose Micromole', ylab='Theta', 
+        main='Relationship between Dose and Theta for Each Gene', col=c, lwd=2)
+axis(1, at = 1:nrow(mExp1.all), labels = rownames(mExp1.all))
+legend('topleft', legend = colnames(mExp1.all), fill=c)
+
+
+
+## mean for the treated samples
+temp = mExp1[,colnames(mExp1) %in% c('100', '10', '5')]
+colMeans(temp)
+mean(colMeans(temp))
+
 
 ## bar plot to make figure from paper
 np = mExp1.single[,'NP']
@@ -368,6 +390,28 @@ lt = lapply(lSignificant, function(x) {
   m = round(m/rowSums(m), 2)
 })
 
+# get G to A
+g2a = lapply(lSignificant, function(x) {
+  m = getTransitionMatrix(t(x[,c('A', 'T', 'G', 'C')]))
+  m = round(m/rowSums(m), 2)
+  m['G', 'A']
+})
+g2a = unlist(g2a)
+names(g2a) = fSamples
+#g2a = g2a[order(fSamples)]
+g2a = tapply(g2a, fSamples, mean)
+barplot(g2a, main='G to A transition probability', xlab='Doses')
+
+c2t = lapply(lSignificant, function(x) {
+  m = getTransitionMatrix(t(x[,c('A', 'T', 'G', 'C')]))
+  m = round(m/rowSums(m), 2)
+  m['C', 'T']
+})
+c2t = unlist(c2t)
+names(c2t) = fSamples
+#c2t = c2t[order(fSamples)]
+c2t = tapply(c2t, fSamples, mean)
+barplot(c2t, main='C to T transition probability', xlab='Doses')
 
 
 
