@@ -68,6 +68,28 @@ For each vector of the simulation from dirichlet posterior using getPosterior, i
 ### getPosteriorGamma = function(alpha.scale, base, n=1000, prior)
 [see gelman P 583 and bayesian computations with R page 66]. The function first substracts the prior (which was a dirichlet prior) from the alpha.scale (we could just use ivSeq instead to speed things up). It adds the components of the non-reference base from the alpha to create one component and the other component is the reference base (base in the function argument). It then adds a Jefferey's prior of 0.5 for the alpha while beta=1 for the Gamma distribution. This is because the likelihood is a poisson rate, and the poisson lambda is ditributed as a gamma variable. We convert the rate to per 1000, simulate 1000 from rgamma.
 
+## logit and logit.inv
+### DESC:
+Simple functions that take a proportion and returns a logit transform or inverse.  
+
+## getTransitionMatrix
+### ARGS:  
+mBase: a matrix of column vectors with 4 components A, T, G and C. The number of columns is equal to the number of positions in the sequence.  
+### DESC:
+Creates a 4X4 matrix, and loops through the columns of mBase. For each column (X) it checks which is the base with maximum frequency (and uses that as the reference base). Using the position of this reference base as the index of the row number in the transition matrix, it add the vector X. However the vector X is converted to 0 or 1, depending on if the components of this vector X were 0 or greater than 0. Finally the diagnoal of this transition matrix is set to 0.
+### RETS:
+The 4X4 zero diagnoal transition matrix. (technially this would be e.g. if reference base is A P(T,G,C | A))
+
+## getalphabeta
+### ARGS: 
+m: mean of the proportion
+v: variance of the proportion.
+Both these are assumed to be from a beta distribution.
+### DESC:
+Using the formula for alpha and beta for the beta distribution (see Gelman 2008) the mean and the variance are used to solve for alpha and beta. This would normally be used if we have a vector of proportions (say an exchangable distribution) and we want to calculate a beta distribution parameters for that.
+### RETS:
+Alpha and Beta for the beta distribution as a named list.
+
 
 # bam_variance.R [NOTE: there is a minor problem with this script as getSequenceVariance needs fixing for calculation of getPosteiorPredict]. Use next script bam_mutation_probability.R instead.
 Loads a list of sorted indexed bamfiles in the given folder, calculates the variance vector for each bam file. The vector for the variance of a bam file, has components equal to the areas of the sequence that have coverage in the bam file, and the variance at that position. Various plots are produced as output.  

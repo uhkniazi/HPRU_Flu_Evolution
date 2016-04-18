@@ -7,6 +7,7 @@
 
 # Example code in package build process
 *-Ex.R
+temp.R
 
 # RStudio files
 .Rproj.user/
@@ -24,3 +25,4 @@ vignettes/*.pdf
 Temp/
 Results/
 Data_external/
+Objects/
