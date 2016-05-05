@@ -265,13 +265,18 @@ f_getTheta = function(x, prot){
 #   return(c(alpha=s, beta=f))
 # })
 
-## use g14, 13, 17 and 19 to calculate prior
+## use g14, 13, 17 and 19 and drug treated samples to calculate prior
 g13 = f_getTheta(dfAllMutants.sig$G13_q10_sort, dfAllMutants.sig$protein)
 g14 = f_getTheta(dfAllMutants.sig$G14_q10_sort, dfAllMutants.sig$protein)
 g17 = f_getTheta(dfAllMutants.sig$G17_q10_sort, dfAllMutants.sig$protein)
 g19 = f_getTheta(dfAllMutants.sig$G19_q10_sort, dfAllMutants.sig$protein)
+g11 = f_getTheta(dfAllMutants.sig$G11_q10_sort, dfAllMutants.sig$protein)
+g12 = f_getTheta(dfAllMutants.sig$G12_q10_sort, dfAllMutants.sig$protein)
+g15 = f_getTheta(dfAllMutants.sig$G15_q10_sort, dfAllMutants.sig$protein)
+g16 = f_getTheta(dfAllMutants.sig$G16_q10_sort, dfAllMutants.sig$protein)
+g18 = f_getTheta(dfAllMutants.sig$G18_q10_sort, dfAllMutants.sig$protein)
 
-mPrior = cbind(g13, g14, g17, g19)
+mPrior = cbind(g13, g14, g17, g19, g11, g12, g15, g16, g18)
 
 mPriors = apply(mPrior, 1, function(x) unlist(getalphabeta(mean(x), var(x))))
 
@@ -376,8 +381,6 @@ matplot(mExp1.all, type='b', pch=20, lty=1, xaxt='n', xlab='Dose Micromole', yla
         main='Relationship between Dose and Theta for Each Gene', col=c, lwd=2)
 axis(1, at = 1:nrow(mExp1.all), labels = rownames(mExp1.all))
 legend('topleft', legend = colnames(mExp1.all), fill=c)
-
-
 
 ## mean for the treated samples
 temp = mExp1[,colnames(mExp1) %in% c('100', '10', '5')]
